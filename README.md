@@ -14,3 +14,9 @@ TODO:
 - When trying to generate template with not exist type - need to delete the folder module.
 - Make endpoint URL a variable and use it in the python scripts.t
 
+
+terraform apply -target=module.templates
+
+terraform apply -target=module.templates.module.device-alert
+
+terraform apply -target=module.templates.module.device-alert.biot_template.ben_test_1

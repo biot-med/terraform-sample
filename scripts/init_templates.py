@@ -2,7 +2,7 @@ import subprocess
 import os
 import sys
 from template_utils import fetch_biot_templates
-from common_utils import get_service_id_and_key, login
+from common_utils import get_required_variables, login
 
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.abspath(os.path.join(CURRENT_PATH, os.pardir))
@@ -44,9 +44,9 @@ def check_tfstate_in_current_dir():
 
 def main():
     check_tfstate_in_current_dir()
-    service_id, service_key = get_service_id_and_key()
+    boit_base_url, service_id, service_key = get_required_variables()
 
-    token = login(service_id, service_key)
+    token = login(boit_base_url, service_id, service_key)
 
     templates = fetch_biot_templates(token)
 
@@ -62,7 +62,7 @@ def main():
 
         for template in remaining_templates:
             template_id = template.get('id')
-            parent_id = template.get('parent_template_id')
+            parent_id = template.get('parentTemplateId')
             template_name = template.get('name')
             template_entity_type = template.get('entityTypeName')
 

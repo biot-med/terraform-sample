@@ -1,17 +1,16 @@
+import getpass
 import os
 import re
 import requests
 
-BASE_URL = 'http://localhost:9999' # TODO - change base-url to be taken like service id / secret key.
-
-def login(service_id, secret_key):
+def login(base_url, service_id, secret_key):
     payload = {
         "id": service_id,
         "secretKey": secret_key
     }
 
     try:
-        response = requests.post(f"{BASE_URL}/ums/v2/services/accessToken", json=payload)
+        response = requests.post(f"{base_url}/ums/v2/services/accessToken", json=payload)
         response.raise_for_status()  # Raises HTTPError for 4xx/5xx responses
 
         data = response.json()
@@ -41,19 +40,23 @@ def read_tf_variables(tf_file_path):
                     key, value = match.groups()
                     variables[key] = value
 
-    # Prompt for missing values
-    if 'biot_service_id' not in variables:
-        variables['biot_service_id'] = input("Enter your BIOT Service ID: ").strip()
-
-    if 'biot_service_secret_key' not in variables:
-        variables['biot_service_secret_key'] = getpass.getpass("Enter your BIOT Secret Key: ")
-
     return variables
 
-def get_service_id_and_key():
-    variables = read_tf_variables('./secret.auto.tfvars')
-    
-    service_id = variables['biot_service_id']
-    service_key = variables['biot_service_secret_key']
+def get_required_variables():
+    secret_variables = read_tf_variables('./secret.auto.tfvars')
+    # Prompt for missing values
+    if 'biot_service_id' not in secret_variables:
+        secret_variables['biot_service_id'] = input("Enter your BIOT Service ID: ").strip()
 
-    return service_id, service_key
+    if 'biot_service_secret_key' not in secret_variables:
+        secret_variables['biot_service_secret_key'] = getpass.getpass("Enter your BIOT Secret Key: ")
+
+    public_variables = read_tf_variables('./public.auto.tfvars')
+    if 'biot_base_url' not in public_variables:
+        public_variables['biot_base_url'] = input("Enter your BIOT Base URL: ").strip()
+    
+    service_id = secret_variables['biot_service_id']
+    service_key = secret_variables['biot_service_secret_key']
+    biot_base_url = public_variables['biot_base_url']
+
+    return biot_base_url, service_id, service_key

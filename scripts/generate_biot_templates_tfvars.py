@@ -3,7 +3,7 @@
 import os
 import sys
 
-from common_utils import get_service_id_and_key, login
+from common_utils import get_required_variables, login
 from template_utils import fetch_biot_templates
 
 def generate_map_value(templates):
@@ -35,8 +35,8 @@ def replace_or_append_variable_block(content, var_name, new_block):
     return "\n".join(updated_lines) + "\n"
 
 def write_or_update_tfvars(tfvars_path):
-    service_id, service_key = get_service_id_and_key()
-    token = login(service_id, service_key)
+    boit_base_url, service_id, service_key = get_required_variables()
+    token = login(boit_base_url, service_id, service_key)
     templates = fetch_biot_templates(token)
 
     new_var_block = f'biot_templates_map = {generate_map_value(templates)}'

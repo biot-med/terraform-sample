@@ -236,8 +236,7 @@ def write_tf_file(project_dir, template_resource, entity_type, template_name):
 
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     with open(filepath, "w") as f:
-        f.write(generate_resource_block(resource_block))
-        f.write("\n\n")
+        f.write(generate_resource_block(resource_block).strip() + "\n")
 
 def get_module_name(entity_type):
     return f"{entity_type}_templates"
@@ -280,12 +279,13 @@ def create_main_tf(project_dir):
     print(f"✅ Created empty main.tf for [{project_dir}]")
 
 # Returns true if created, false if not.
-def create_module_if_not_exist(dir_path):
+def create_module_if_not_exist(dir_path, include_main=True):
     if not os.path.exists(dir_path):
         os.makedirs(f"{dir_path}", exist_ok=True)
         create_providers_tf(dir_path)
-        create_main_tf(dir_path)
         create_template_ids_variable_file(dir_path)
+        if include_main:
+            create_main_tf(dir_path)
         return True
     
     return False
@@ -495,7 +495,7 @@ def main():
         add_module_to_main("./", "templates", "../../modules/templates")
     
     # Creating the entity-type module if not exist
-    is_entity_type_module_created = create_module_if_not_exist(f"{templates_dir}/{entity_type}")
+    is_entity_type_module_created = create_module_if_not_exist(f"{templates_dir}/{entity_type}", include_main=False)
     # Adding the entity-type module to the templates module's main.tf
     if is_entity_type_module_created:
         add_module_to_main(f"{project_dir}/modules/templates", entity_type, f"./{entity_type}")
