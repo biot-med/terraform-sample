@@ -9,3 +9,8 @@ variable "biot_service_secret_key" {
   description = "Service Secret Key"
   sensitive   = true
 }
+
+variable "biot_templates_map" {
+  type        = map(any)
+  description = "Map of template ids"
+}
