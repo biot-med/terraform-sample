@@ -1,4 +1,9 @@
 
+variable "biot_base_url" {
+  type        = string
+  description = "Your BIOT Base URL for the current environment"
+}
+
 variable "biot_service_id" {
   type        = string
   description = "Service ID"
