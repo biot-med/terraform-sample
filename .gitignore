@@ -9,7 +9,6 @@
 crash.log
 
 # Exclude override files as they are usually local and not shared
-*.tfvars
 *.tfvars.json
 
 # Sensitive variable files
