@@ -48,7 +48,7 @@ def main():
 
     token = login(boit_base_url, service_id, service_key)
 
-    templates = fetch_biot_templates(token)
+    templates = fetch_biot_templates(boit_base_url, token)
 
     subprocess.run(["python3", "../../scripts/generate_biot_templates_tfvars.py"], check=True)
 
@@ -83,6 +83,8 @@ def main():
             progress_made = True
 
         if not progress_made:
+            print("No progress made ! printing next_round:")
+            print(next_round)
             raise RuntimeError("Could not resolve dependencies — circular or missing parent IDs?")
         
         remaining_templates = next_round

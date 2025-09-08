@@ -37,7 +37,7 @@ def replace_or_append_variable_block(content, var_name, new_block):
 def write_or_update_tfvars(tfvars_path):
     boit_base_url, service_id, service_key = get_required_variables()
     token = login(boit_base_url, service_id, service_key)
-    templates = fetch_biot_templates(token)
+    templates = fetch_biot_templates(boit_base_url, token)
 
     new_var_block = f'biot_templates_map = {generate_map_value(templates)}'
 

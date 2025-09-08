@@ -21,7 +21,7 @@ terraform apply -target=module.templates.module.device-alert
 
 terraform apply -target=module.templates.module.device-alert.biot_template.ben_test_1
 
-## Explain the secrets
+## Explain the secrets (also tell them to remove .example from secrets)
 
 ## Explain all scripts
 
