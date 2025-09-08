@@ -177,7 +177,12 @@ def format_value(value, level=1):
     if isinstance(value, bool):
         return "true" if value else "false"
     elif isinstance(value, str):
-        return f"\"{value}\""
+        if '\n' in value:
+            heredoc_tag = "EOT"
+            return f"<<{heredoc_tag}\n{value}\n{heredoc_tag}"
+        else:
+            escaped = value.replace('"', '\\"')
+            return f"\"{escaped}\""
     elif value is None:
         return "null"
     elif isinstance(value, (int, float)):

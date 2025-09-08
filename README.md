@@ -20,3 +20,17 @@ terraform apply -target=module.templates
 terraform apply -target=module.templates.module.device-alert
 
 terraform apply -target=module.templates.module.device-alert.biot_template.ben_test_1
+
+## Explain the secrets
+
+## Explain all scripts
+
+## Explain destructive changes
+
+## Explain usage of parent_template_id should not be hardcoded.
+
+## Explain import to tfstate ?
+
+## Explain remove from tfstate
+
+## Explain how to manage existing resource in the cloud but not in the terraform
