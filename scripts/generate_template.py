@@ -179,7 +179,7 @@ def format_value(value, level=1):
     elif isinstance(value, str):
         if '\n' in value:
             heredoc_tag = "EOT"
-            return f"<<{heredoc_tag}\n{value}\n{heredoc_tag}"
+            return f"<<-{heredoc_tag}\n{value.strip()}\n{heredoc_tag}"
         else:
             escaped = value.replace('"', '\\"')
             return f"\"{escaped}\""
