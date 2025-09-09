@@ -189,6 +189,7 @@ Generates the `biot_templates_map` variable for the current environment.
   ```bash
   cd envs/dev
   python3 ../../scripts/generate_biot_templates_tfvars.py
+  ```
 
 - **What it does:**
 This script reads your BIOT credentials (from secret.auto.tfvars) and base URL (from public.auto.tfvars),
@@ -212,6 +213,7 @@ Creates a new `.tf` file for a specific BIOT template and updates the project st
   ```bash
   cd envs/dev
   python3 ../../scripts/generate_template.py --name=<template-name> --type=<template-type>
+  ```
 
   example - python3 ../../scripts/generate_template.py --name=nurse --type=caregiver
 
@@ -249,6 +251,7 @@ Initializes the full templates infrastructure for the current environment by gen
   ```bash
   cd envs/dev
   python3 ../../scripts/init_templates.py
+  ```
 
 - **What it does:**
 
@@ -285,6 +288,7 @@ To update an existing BIOT template:
 
    ```bash
    modules/templates/caregiver/nurse.tf
+   ```
 
 2. Apply the changes by running Terraform from the environment where you want the update to take effect.
 For example, from the dev environment:
@@ -315,6 +319,7 @@ If you've made changes directly in the **BIOT Console UI** and want to reflect t
 
    ```bash
    cd envs/dev
+   ```
 
 3. View the current state to find the resource name:
 
@@ -357,10 +362,47 @@ terraform apply --force=true
 ⚠️ Use with caution!
 This will apply changes that may lead to data loss. Always double-check before forcing.
 
+## ➕ Creating a New Environment
+
+To create a new environment (e.g., `staging`, `prod`, or any other), follow these steps:
+
+### 🪄 1. Copy an Existing Environment
+
+Duplicate the `dev` environment folder:
+
+```bash
+cp -r envs/dev envs/<new-env-name>
+```
+
+Replace <new-env> with your desired environment name, such as staging or prod.
+
+🛠️ 2. Update Environment Variables
+
+Inside your new environment folder (envs/<new-env>), update the following files:
+
+public.auto.tfvars
+Update the biot_base_url to match your new environment's URL.
+
+secret.auto.tfvars.example (rename and update)
+
+Rename to secret.auto.tfvars (if not already).
+
+Update with the correct biot_service_id and biot_service_secret_key for this environment.
+
+✅ Note:
+secret.auto.tfvars is already included in .gitignore by default to protect sensitive information.
+
+🚀 3. Initialize
+
+From your new environment folder:
+  cd envs/<new-env>
+  terraform init
+
+Your new environment is now set up and ready to use!
+
 ----------------------------------------------------------
 
 TODO:
 
 - Make sure when we delete .tf file (meaning we want to delete the template) - if the template is already in use we display proper message and suggest how to continue...
 - List of available entity-types should be on our DOC
-
