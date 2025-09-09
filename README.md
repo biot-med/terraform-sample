@@ -299,9 +299,9 @@ terraform apply
 That’s it — Terraform will detect the changes in the configuration and apply them to your BIOT environment.
 
 - Incase you want terraform to apply changes only for a specific module or a specific .tf file - 
-terraform apply -target=module.templates                        # applies for all templates.
-terraform apply -target=module.templates.module.caregiver       # applies for all caregiver templates
-terraform apply -target=module.templates.module.caregiver.nurse # applies only for the nurse.tf
+terraform apply -target=module.templates                                      # applies for all templates.
+terraform apply -target=module.templates.module.caregiver                     # applies for all caregiver templates
+terraform apply -target=module.templates.module.caregiver.biot_template.nurse # applies only for the nurse.tf
 
 ---
 
