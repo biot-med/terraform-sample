@@ -406,3 +406,5 @@ TODO:
 
 - Make sure when we delete .tf file (meaning we want to delete the template) - if the template is already in use we display proper message and suggest how to continue...
 - List of available entity-types should be on our DOC
+- When creating new environment - need to override the biot_templates_map
+- Change the generate_template script to allways do the same order
