@@ -182,7 +182,7 @@ This structure helps maintain flexibility and avoids environment-specific hardco
 ## Scripts
 
 To simplify working with the BIOT Terraform provider, this project includes several helper Python scripts.  
-Each script should be run from within a specific environment folder (e.g., `envs/dev`, `envs/staging`, etc.).
+Each script should be run from within a specific environment folder (e.g., `envs/dev`, `envs/staging`, etc.) unless specified differently.
 
 ---
 
@@ -294,6 +294,18 @@ Initializes the full templates infrastructure for the current environment by gen
   It will only run if there is no existing .tfstate file in the current environment folder — to avoid overwriting or duplicating infrastructure.
 
   Meant for bootstrapping your template setup when starting the project.
+
+---
+
+### `create_env.py`
+
+- Should be run from project's root folder.
+- Creates new foldering structure with all required files for a new environment.
+
+- **Usage:**
+```bash
+python3 scripts/create_env.py
+```
 
 ---
 
