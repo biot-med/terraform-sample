@@ -103,13 +103,13 @@ def generate_resource_block(resource, level=0):
     resource_type = resource["type"]
     resource_name = resource["name"]
     attributes = resource.get("attributes", {})
-    set_keys = {"custom_attributes", "builtin_attributes", "template_attributes"}
+    last_keys_to_render = ["custom_attributes", "builtin_attributes", "template_attributes"]
 
     indent = INDENT * level
     lines = [f'{indent}resource "{resource_type}" "{resource_name}" {{']
 
     for key, value in attributes.items():
-        if key == "id" or key in set_keys:
+        if key == "id" or key in last_keys_to_render:
             continue  # Skip top-level "id"
         
         if key == "parent_template_id" and value is not None:
@@ -120,7 +120,7 @@ def generate_resource_block(resource, level=0):
         lines.append(render_block(key, value, level + 1))
 
     # Handling custom, builtin and template attributes last for readability of the .tf file.
-    for key in set_keys:
+    for key in last_keys_to_render:
         value = attributes.get(key)
         if value is not None:
             lines.append(render_block(key, value, level + 1))
