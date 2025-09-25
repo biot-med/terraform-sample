@@ -25,6 +25,7 @@ Before using this project, make sure you have the following:
 
 ## 📁 Project Structure
 
+```
 envs/
 ├── dev/                 # Development environment configuration
 │   ├── main.tf          # Terraform entrypoint configuring the provider and resources
@@ -56,6 +57,7 @@ modules/
         ├── device-type1.tf
         ├── device-type2.tf
         └── variables.tf
+```
 
 ### `envs/dev/main.tf`
 
@@ -128,11 +130,15 @@ Make sure to provide values for these variables through `.auto.tfvars` files or 
 
 ---
 
-### Modules
+# Modules
 
 Modules form the core infrastructure of the project and are **shared across all environments**. This means the module code is the same whether you are working with `dev`, `staging`, or `prod`.
 
-At the top level, there is a **"template" module**, which contains a `main.tf` file that includes several **child modules** such as:
+Biot's terraform provider currently supported modules: Templates.
+
+## Template Module
+
+Template module contains a `main.tf` file that includes several **child modules** such as:
 
 - `caregiver/`
 - `patient/`
@@ -208,6 +214,19 @@ If you’re using the init_templates.py or generate_template.py scripts (explain
 
 Creates a new `.tf` file for a specific BIOT template and updates the project structure accordingly.
 
+- **Supported Template Types**:
+  - patient
+  - caregiver
+  - organization-user
+  - organization
+  - device
+  - generic-entity
+  - command
+  - device-alert
+  - patient-alert
+  - usage-session
+  - registration-code
+
 - **Usage:**
 
   ```bash
@@ -216,6 +235,9 @@ Creates a new `.tf` file for a specific BIOT template and updates the project st
   ```
 
   example - python3 ../../scripts/generate_template.py --name=nurse --type=caregiver
+
+- **Supported Template Types:**
+
 
 - **Important:**
   The script will create the .tf file from the template of the specific env. it is suggested to use this only for dev
@@ -275,10 +297,6 @@ Initializes the full templates infrastructure for the current environment by gen
 
 ---
 
-## 🛠️ Managing State, Imports & Targeted Applies
-
----
-
 ## 🔄 Updating a Template
 
 To update an existing BIOT template:
@@ -323,18 +341,23 @@ If you've made changes directly in the **BIOT Console UI** and want to reflect t
 
 3. View the current state to find the resource name:
 
-  terraform state list
+    ```bash
+    terraform state list
+    ```
 
 4. Remove the old template from state:
 
-  terraform state rm biot_template.<template-name> # from the above list
+  ```bash
+  terraform state rm biot_template.<template-name> # name from the above list
+  ```
 
 5. Delete the corresponding .tf file for the template:
   For example: rm modules/templates/caregiver/nurse.tf
 
 Re-generate the template using the script:
-
+```bash
 python3 ../../scripts/generate_template.py --name=nurse --type=caregiver
+```
 
 This process ensures your Terraform configuration reflects the latest version of the template from the BIOT environment.
 
@@ -366,45 +389,32 @@ This will apply changes that may lead to data loss. Always double-check before f
 
 To create a new environment (e.g., `staging`, `prod`, or any other), follow these steps:
 
-### 🪄 1. Copy an Existing Environment
-
-Duplicate the `dev` environment folder:
+In the project root folder:
 
 ```bash
-cp -r envs/dev envs/<new-env-name>
+python3 scripts/create_env.py
 ```
 
-Replace <new-env> with your desired environment name, such as staging or prod.
-
-🛠️ 2. Update Environment Variables
-
-Inside your new environment folder (envs/<new-env>), update the following files:
-
-public.auto.tfvars
-Update the biot_base_url to match your new environment's URL.
-
-secret.auto.tfvars.example (rename and update)
-
-Rename to secret.auto.tfvars (if not already).
-
-Update with the correct biot_service_id and biot_service_secret_key for this environment.
-
-✅ Note:
-secret.auto.tfvars is already included in .gitignore by default to protect sensitive information.
-
-🚀 3. Initialize
-
-From your new environment folder:
-  cd envs/<new-env>
-  terraform init
+Insert env name / base_url / service id + secret (prompt in the CLI)
 
 Your new environment is now set up and ready to use!
+
+- **important**:
+  - If any imports fail, a message listing all templates that failed to import will be displayed.
+  - In case you change template name in previous environment the script will not be able to import that template to your new environment (since it's name does not match the previous name). In that case you will have to import the template manually as it is in the new environment:
+  ```bash
+  terraform import module.templates.module.<template-type>.biot_template.<template-name> <template-type>:<template-name>"
+  ```
 
 ----------------------------------------------------------
 
 TODO:
+  - If there is a destructive change and the user updates multiple templates, some might success and others fails. (this is the behavior from the SE)
+  - if tempalte name was changed, we need to update the VARS map. (name to id map)
+  - If template name change in DEV before managed staging, terraform will not know its the same resource and try to delete the previous one and create new one (is it even possible to delete the default template? for example clinician)
+  - If there are many templates - it takes time to init, and also takes time to create new env.  
 
-- Make sure when we delete .tf file (meaning we want to delete the template) - if the template is already in use we display proper message and suggest how to continue...
-- List of available entity-types should be on our DOC
-- When creating new environment - need to override the biot_templates_map
-- Change the generate_template script to allways do the same order
+
+
+
+
