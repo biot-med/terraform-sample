@@ -419,14 +419,3 @@ Your new environment is now set up and ready to use!
   ```
 
 ----------------------------------------------------------
-
-TODO:
-  - If there is a destructive change and the user updates multiple templates, some might success and others fails. (this is the behavior from the SE)
-  - if tempalte name was changed, we need to update the VARS map. (name to id map)
-  - If template name change in DEV before managed staging, terraform will not know its the same resource and try to delete the previous one and create new one (is it even possible to delete the default template? for example clinician)
-  - If there are many templates - it takes time to init, and also takes time to create new env.  
-
-
-
-
-
