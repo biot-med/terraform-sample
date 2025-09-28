@@ -118,16 +118,16 @@ def main():
     print("\n✅ Import Complete.\n")
 
     if missing_in_backend:
-        print("❌ Templates defined in code but missing in backend:")
+        print("Templates defined in code but missing in backend:")
         for t_type, t_name in missing_in_backend:
             print(f"  - {t_type}:{t_name}")
-        print("❌ The above templates could not match any template from the BE, this can happen if the template name was changed before started managing it in terraform. in this case you will have to import it manually.")
+        print("❓The above templates are likely new and haven't been created in this environment yet. If they already exist under a different name, you'll need to import them manually using: 'terraform import biot_template.<resource-name> entity-type:template-name'")
 
-    if unmatched_backend:
-        print("📌 Templates in backend but not imported (not found in code):")
-        for t_type, t_name in unmatched_backend:
-            print(f"  - {t_type}:{t_name}")
-        print("📌 In your next terraform plan / apply terraform will attempt to delete the above templates.")
+    # if unmatched_backend:
+    #     print("📌 Templates in backend but not imported (not found in code):")
+    #     for t_type, t_name in unmatched_backend:
+    #         print(f"  - {t_type}:{t_name}")
+    #     print("📌 In your next terraform plan / apply terraform will attempt to delete the above templates.")
 
 
 if __name__ == "__main__":
