@@ -23,6 +23,64 @@ Before using this project, make sure you have the following:
 
 ---
 
+## Main Flows
+
+# First time initialize
+
+After forking this project to initialize the terraform project and sync it with your current environment's state - 
+1. remove 'example' from the secret.auto.tfvars.example file (the new name should be secret.auto.tfvars)
+2. Make sure the values in both secret.auto.tfvars and public.auto.tfvars are updated and correct for your environment (more explanations in the below sections about how to get the values)
+3. navigate in the terminal to the envs/dev environment - 'cd envs/dev'
+4. run init script - 'python3 ../../scripts/init_templates.py'
+
+After running the above steps you will have 'modules/templates' folder containing all of your template resources from your state ready to be managed in terraform.
+
+**important:** initialization script can run only once per project and should not be run again even on different environment. (for creating new environment in terraform find the instructions below)
+
+# Updating template via terraform
+
+To update a specific template from terraform all you have to do is find the template you wish to update in the modules/templates folder, modify any attribute you wish and run 'terraform apply'
+
+# Creating new template
+
+It is possible to create new .tf file config with a new template but this may be very hard due to many attributes. A simple solution for that is creating the template via the console portal and then generate it in terraform using the following python script:
+
+1. navigate to your dev env - 'cd envs/dev'
+2. run in terminal - 'python3 ../../scripts/generate_template.py'
+3. The scripts will require you to type entity-type and template-name.
+
+Supported entity-types:
+  - patient
+  - caregiver
+  - organization-user
+  - organization
+  - device
+  - generic-entity
+  - command
+  - device-alert
+  - patient-alert
+  - usage-session
+  - registration-code
+
+You can find now the template under the modules/template/<entity-type> folder.
+
+**important:** The method to create via console and auto-generate in terraform should only be used in DEV environment. Terraform resources should only be managed in terraform and you should never update a resource manualy. (expect for testing in your develop environment)
+
+# Updating template via console and sync terraform with the change
+
+In some cases we want to update our template resource but not sure exactly how to do from terraform. In this case you can change the template via the console portal and remove the resource management from terraform and auto-generating it again. Here are the steps how to do that:
+
+1. Update the template via the console portal.
+2. Remove the resource management from terraform: 
+  - In your terminal - 'cd envs/dev'
+  - In your terminal - 'terraform state list'
+  - Copy the template full path you wish from the state list (From above step) and run - 'terraform state rm <paste-template-full-path>
+  - In your terminal - 'python3 ../../scripts/generate_template.py' (more details in the previous title)
+
+This method should only be used for development envrionments.
+
+---
+
 ## 📁 Project Structure
 
 ```
@@ -51,7 +109,6 @@ modules/
     │   └── variables.tf
     ├── patient/         # Patient template module variations
     │   ├── patient-type1.tf
-    │   ├── patient-type2.tf
     │   └── variables.tf
     └── device/          # Device template module variations
         ├── device-type1.tf
@@ -60,14 +117,6 @@ modules/
 ```
 
 ### `envs/dev/main.tf`
-
-This file contains the Terraform configuration to set up the BIOT provider and manage BIOT templates for the `dev` environment.
-
-- **Provider Configuration:**  
-  Configures the `biot` provider with required variables such as `biot_base_url`, `biot_service_id`, and `biot_service_secret_key`. These values are supplied via environment variables or `.auto.tfvars` files to separate secrets and environment-specific data from code.
-
-- **Required Providers:**  
-  Specifies the `biot` provider source and version, ensuring Terraform installs the correct provider plugin.
 
 This `main.tf` acts as the entry point for managing BIOT templates in the `dev` environment.
 
@@ -83,6 +132,8 @@ This file contains **non-sensitive, environment-specific variables** that are sa
 
   ```hcl
   biot_base_url = "https://api.dev.yourproject.biot-med.com"
+
+  You can get this information via console portal -> Technical Information (top right settings icon)
 
 ### `secret.auto.tfvars.example`
 
@@ -107,26 +158,6 @@ This means it will not be committed to version control, protecting your secrets.
 It’s very important not to remove this entry from .gitignore.
 
 If you decide to use a different filename for your secrets, make sure to add that filename to .gitignore as well, to keep your sensitive information safe.
-
-### `variables.tf`
-
-This file defines all the input variables used in your Terraform configuration for the current environment.
-
-- **Purpose:**  
-  It declares the variables that the `main.tf` and other Terraform files reference, such as:
-
-  - `biot_base_url`: The base URL for the BIOT API in this environment.
-  - `biot_service_id`: Your service ID (used to authenticate).
-  - `biot_service_secret_key`: The secret key for the service (marked as sensitive).
-  - Other variables relevant to your templates or provider configuration.
-
-- **Why it matters:**  
-  Defining variables here allows you to keep your configuration modular and flexible, making it easier to manage different environments by simply changing variable values without editing code.
-
-- **Sensitive Variables:**  
-  Variables like `biot_service_secret_key` are marked as sensitive, so their values won't be shown in Terraform logs or output, helping to keep secrets safe.
-
-Make sure to provide values for these variables through `.auto.tfvars` files or environment variables before running Terraform commands.
 
 ---
 
