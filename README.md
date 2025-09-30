@@ -25,59 +25,60 @@ Before using this project, make sure you have the following:
 
 ## Main Flows
 
-# First time initialize
+## First time initialize
 
-After forking this project to initialize the terraform project and sync it with your current environment's state - 
-1. remove 'example' from the secret.auto.tfvars.example file (the new name should be secret.auto.tfvars)
+After forking this project to initialize the terraform project and sync it with your current environment's state:
+
+1. Remove 'example' from the secret.auto.tfvars.example file (the new name should be secret.auto.tfvars)
 2. Make sure the values in both secret.auto.tfvars and public.auto.tfvars are updated and correct for your environment (more explanations in the below sections about how to get the values)
-3. navigate in the terminal to the envs/dev environment - 'cd envs/dev'
-4. run init script - 'python3 ../../scripts/init_templates.py'
+3. Navigate in the terminal to the envs/dev environment - `cd envs/dev`
+4. Run init script - `python3 ../../scripts/init_templates.py`
 
 After running the above steps you will have 'modules/templates' folder containing all of your template resources from your state ready to be managed in terraform.
 
-**important:** initialization script can run only once per project and should not be run again even on different environment. (for creating new environment in terraform find the instructions below)
+**Important:** Initialization script can run only once per project and should not be run again even on different environment. (for creating new environment in terraform find the instructions below)
 
-# Updating template via terraform
+## Updating template via terraform
 
-To update a specific template from terraform all you have to do is find the template you wish to update in the modules/templates folder, modify any attribute you wish and run 'terraform apply'
+To update a specific template from terraform all you have to do is find the template you wish to update in the modules/templates folder, modify any attribute you wish and run `terraform apply`
 
-# Creating new template
+## Creating new template
 
 It is possible to create new .tf file config with a new template but this may be very hard due to many attributes. A simple solution for that is creating the template via the console portal and then generate it in terraform using the following python script:
 
-1. navigate to your dev env - 'cd envs/dev'
-2. run in terminal - 'python3 ../../scripts/generate_template.py'
+1. Navigate to your dev env - `cd envs/dev`
+2. Run in terminal - `python3 ../../scripts/generate_template.py`
 3. The scripts will require you to type entity-type and template-name.
 
 Supported entity-types:
-  - patient
-  - caregiver
-  - organization-user
-  - organization
-  - device
-  - generic-entity
-  - command
-  - device-alert
-  - patient-alert
-  - usage-session
-  - registration-code
+- patient
+- caregiver
+- organization-user
+- organization
+- device
+- generic-entity
+- command
+- device-alert
+- patient-alert
+- usage-session
+- registration-code
 
 You can find now the template under the modules/template/<entity-type> folder.
 
-**important:** The method to create via console and auto-generate in terraform should only be used in DEV environment. Terraform resources should only be managed in terraform and you should never update a resource manualy. (expect for testing in your develop environment)
+**Important:** The method to create via console and auto-generate in terraform should only be used in DEV environment. Terraform resources should only be managed in terraform and you should never update a resource manually. (except for testing in your develop environment)
 
-# Updating template via console and sync terraform with the change
+## Updating template via console and sync terraform with the change
 
 In some cases we want to update our template resource but not sure exactly how to do from terraform. In this case you can change the template via the console portal and remove the resource management from terraform and auto-generating it again. Here are the steps how to do that:
 
 1. Update the template via the console portal.
-2. Remove the resource management from terraform: 
-  - In your terminal - 'cd envs/dev'
-  - In your terminal - 'terraform state list'
-  - Copy the template full path you wish from the state list (From above step) and run - 'terraform state rm <paste-template-full-path>
-  - In your terminal - 'python3 ../../scripts/generate_template.py' (more details in the previous title)
+2. Remove the resource management from terraform:
+   - In your terminal - `cd envs/dev`
+   - In your terminal - `terraform state list`
+   - Copy the template full path you wish from the state list (From above step) and run - `terraform state rm <paste-template-full-path>`
+   - In your terminal - `python3 ../../scripts/generate_template.py` (more details in the previous title)
 
-This method should only be used for development envrionments.
+This method should only be used for development environments.
 
 ---
 
