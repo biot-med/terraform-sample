@@ -5,8 +5,7 @@ import subprocess
 MAIN_TF_CONTENT = """terraform {
   required_providers {
     biot = {
-      // TODO: change to the real source.
-      source  = "example.com/biot/biot"
+      source  = "registry.terraform.io/biot-med/biot-gen2"
       version = "1.0.0"
     }
   }

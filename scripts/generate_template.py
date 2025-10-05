@@ -263,7 +263,7 @@ def create_providers_tf(dir_path):
 terraform {
   required_providers {
     biot = {
-      source  = "example.com/biot/biot"
+      source  = "registry.terraform.io/biot-med/biot-gen2"
       version = "1.0.0"
     }
   }
