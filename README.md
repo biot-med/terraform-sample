@@ -73,6 +73,7 @@ In some cases we want to update our template resource but not sure exactly how t
 
 1. Update the template via the console portal.
 2. Remove the resource management from terraform:
+   - Delete the relevant template's .tf file from the module/templates
    - In your terminal - `cd envs/dev`
    - In your terminal - `terraform state list`
    - Copy the template full path you wish from the state list (From above step) and run - `terraform state rm <paste-template-full-path>`
@@ -421,10 +422,10 @@ When Terraform detects a destructive change during `terraform apply`, it will:
 
 #### ✅ If you're sure you want to proceed:
 
-You can **force the apply** by adding the `--force=true` flag:
+You can **force the apply** by adding the `TF_FORCE_UPDATE=true` flag:
 
 ```bash
-terraform apply --force=true
+TF_FORCE_UPDATE=true terraform apply
 ```
 ⚠️ Use with caution!
 This will apply changes that may lead to data loss. Always double-check before forcing.
