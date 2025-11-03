@@ -2,7 +2,7 @@
 
 This is a sample Terraform project for managing BIOT resources using the `biot` Terraform provider.
 
-This repository is intended to manage Biot's resources for your own environments, such as `dev`, `staging`, or `prod`.
+This repository is intended to manage BioT's resources for your own environments, such as `dev`, `staging`, or `prod`.
 Currently supported resources: Templates.
 
 ---
@@ -18,18 +18,18 @@ Before using this project, make sure you have the following:
   [Python Download and Installation](https://www.python.org/downloads/)
 
 - **BIOT Service ID and Secret Key**  
-  You will need valid credentials (service ID and secret key) to authenticate with the BIOT API.  
+  You will need valid credentials (service ID and secret key) for the Terraform to authenticate with the BIOT APIs.  
   See the [BIOT Service Credentials documentation](<doc link>) for details on how to obtain these.
 
 ---
 
 ## Main Flows
 
-## First time initialize
+## First Time Initialization
 
 After forking this project to initialize the terraform project and sync it with your current environment's state:
 
-1. Remove 'example' from the secret.auto.tfvars.example file (the new name should be secret.auto.tfvars)
+1. Remove 'example' extension from the envs/dev/secret.auto.tfvars.example file (the new name should be secret.auto.tfvars)
 2. Make sure the values in both secret.auto.tfvars and public.auto.tfvars are updated and correct for your environment (more explanations in the below sections about how to get the values)
 3. Navigate in the terminal to the envs/dev environment - `cd envs/dev`
 4. Run init script - `python3 ../../scripts/init_templates.py`
@@ -38,13 +38,13 @@ After running the above steps you will have 'modules/templates' folder containin
 
 **Important:** Initialization script can run only once per project and should not be run again even on different environment. (for creating new environment in terraform find the instructions below)
 
-## Updating template via terraform
+## Updating a Template via Terraform
 
 To update a specific template from terraform all you have to do is find the template you wish to update in the modules/templates folder, modify any attribute you wish and run `terraform apply`
 
-## Creating new template
-
-It is possible to create new .tf file config with a new template but this may be very hard due to many attributes. A simple solution for that is creating the template via the console portal and then generate it in terraform using the following python script:
+## Creating a New Template
+It is possible to create new .tf file config with a new template but this may be very hard due to many attributes.
+A simple solution for that is creating the template via the BioT Console portal and then generate it in terraform using the following python script:
 
 1. Navigate to your dev env - `cd envs/dev`
 2. Run in terminal - `python3 ../../scripts/generate_template.py`
@@ -67,16 +67,18 @@ You can find now the template under the modules/template/<entity-type> folder.
 
 **Important:** The method to create via console and auto-generate in terraform should only be used in DEV environment. Terraform resources should only be managed in terraform and you should never update a resource manually. (except for testing in your develop environment)
 
-## Updating template via console and sync terraform with the change
+## Updating a Template via BioT Console and Sync Terraform with the Change
 
-In some cases we want to update our template resource but not sure exactly how to do from terraform. In this case you can change the template via the console portal and remove the resource management from terraform and auto-generating it again. Here are the steps how to do that:
+In some cases we want to update our template resource but not sure exactly how to do if from terraform. 
+In this case you can change the template via the BioT Console portal and remove the resource management from terraform and auto-generating it again. 
+Here are the steps how to do that:
 
-1. Update the template via the console portal.
+1. Update the template via the console portal, e.g. add a new attribute.
 2. Remove the resource management from terraform:
    - Delete the relevant template's .tf file from the module/templates
    - In your terminal - `cd envs/dev`
    - In your terminal - `terraform state list`
-   - Copy the template full path you wish from the state list (From above step) and run - `terraform state rm <paste-template-full-path>`
+   - Copy the template full path you wish from the state list (from above step) and run - `terraform state rm <paste-template-full-path>`
    - In your terminal - `python3 ../../scripts/generate_template.py` (more details in the previous title)
 
 This method should only be used for development environments.
