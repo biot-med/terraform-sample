@@ -51,6 +51,7 @@ A simple solution for that is creating the template via the BioT Console portal 
 3. The scripts will require you to type entity-type and template-name.
 
 Supported entity-types:
+
 - patient
 - caregiver
 - organization-user
