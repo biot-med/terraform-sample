@@ -42,6 +42,12 @@ After running the above steps you will have 'modules/templates' folder containin
 
 To update a specific template from terraform all you have to do is find the template you wish to update in the modules/templates folder, modify any attribute you wish move to the environment's folder (`cd envs/dev`) and run `terraform apply`
 
+- Incase you want terraform to apply changes only for a specific module or a specific .tf file - 
+
+* terraform apply -target=module.templates                                    (applies for all templates)
+* terraform apply -target=module.templates.module.caregiver                    (applies for all caregiver templates)
+* terraform apply -target=module.templates.module.caregiver.biot_template.nurse(applies only for the nurse.tf)
+
 ## Creating a New Template
 It is possible to create new .tf file config with a new template but this may be very hard due to many attributes.
 A simple solution for that is creating the template via the BioT Console portal and then generate it in terraform using the following python script:
@@ -81,7 +87,7 @@ Here are the steps how to do that:
    - In your terminal - `cd envs/dev`
    - In your terminal - `terraform state list`
    - Copy the template full path you wish from the state list (from above step) and run - `terraform state rm <paste-template-full-path>`
-   - In your terminal - `python3 ../../scripts/generate_template.py` (more details in the previous title)
+   - In your terminal - `python3 ../../scripts/generate_template.py` (more details in the [Creating a New Template](#creating-a-new-template) section)
 
 This method should only be used for development environments.
 
@@ -343,72 +349,6 @@ Initializes the full templates infrastructure for the current environment by gen
 ```bash
 python3 scripts/create_env.py
 ```
-
----
-
-## 🔄 Updating a Template
-
-To update an existing BIOT template:
-
-1. **Edit the relevant `.tf` file** inside the appropriate module.  
-   For example:
-
-   ```bash
-   modules/templates/caregiver/nurse.tf
-   ```
-
-2. Apply the changes by running Terraform from the environment where you want the update to take effect.
-For example, from the dev environment:
-
-cd envs/dev
-terraform apply
-
-That’s it — Terraform will detect the changes in the configuration and apply them to your BIOT environment.
-
-- Incase you want terraform to apply changes only for a specific module or a specific .tf file - 
-terraform apply -target=module.templates                                      # applies for all templates.
-terraform apply -target=module.templates.module.caregiver                     # applies for all caregiver templates
-terraform apply -target=module.templates.module.caregiver.biot_template.nurse # applies only for the nurse.tf
-
----
-
-### 🧪 Syncing Changes Made in the BIOT Console
-
-If you've made changes directly in the **BIOT Console UI** and want to reflect those changes in your Terraform code, follow this process.
-
-> ⚠️ **Recommended:** Perform these steps only in the **`dev`** environment to safely test changes before applying them elsewhere.
-
-#### 🔁 Steps to Re-Import an Updated Template:
-
-1. **Make changes** to the template in the BIOT Console.
-
-2. In your terminal, go to the environment folder:
-
-   ```bash
-   cd envs/dev
-   ```
-
-3. View the current state to find the resource name:
-
-    ```bash
-    terraform state list
-    ```
-
-4. Remove the old template from state:
-
-  ```bash
-  terraform state rm biot_template.<template-name> # name from the above list
-  ```
-
-5. Delete the corresponding .tf file for the template:
-  For example: rm modules/templates/caregiver/nurse.tf
-
-Re-generate the template using the script:
-```bash
-python3 ../../scripts/generate_template.py --name=nurse --type=caregiver
-```
-
-This process ensures your Terraform configuration reflects the latest version of the template from the BIOT environment.
 
 ---
 
