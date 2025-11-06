@@ -19,7 +19,7 @@ Before using this project, make sure you have the following:
 
 - **BIOT Service ID and Secret Key**  
   You will need valid credentials (service ID and secret key) for the Terraform to authenticate with the BIOT APIs.  
-  See the [BIOT Service Credentials documentation](<doc link>) for details on how to obtain these.
+  See the [BIOT Service Credentials documentation](https://docs.biot-med.com/docs/technical-information) (under the "Terraform Service User" section) for details on how to obtain these.
 
 ---
 
