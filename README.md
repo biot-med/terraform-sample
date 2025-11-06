@@ -40,7 +40,7 @@ After running the above steps you will have 'modules/templates' folder containin
 
 ## Updating a Template via Terraform
 
-To update a specific template from terraform all you have to do is find the template you wish to update in the modules/templates folder, modify any attribute you wish and run `terraform apply`
+To update a specific template from terraform all you have to do is find the template you wish to update in the modules/templates folder, modify any attribute you wish move to the environment's folder (`cd envs/dev`) and run `terraform apply`
 
 ## Creating a New Template
 It is possible to create new .tf file config with a new template but this may be very hard due to many attributes.
@@ -76,6 +76,7 @@ Here are the steps how to do that:
 
 1. Update the template via the console portal, e.g. add a new attribute.
 2. Remove the resource management from terraform:
+
    - Delete the relevant template's .tf file from the module/templates
    - In your terminal - `cd envs/dev`
    - In your terminal - `terraform state list`
