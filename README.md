@@ -1,6 +1,6 @@
-# BIOT Terraform Sample Project
+# BioT Terraform Sample Project
 
-This is a sample Terraform project for managing BIOT resources using the `biot` Terraform provider.
+This is a sample Terraform project for managing BioT resources using the `BioT` Terraform provider.
 
 This repository is intended to manage BioT's resources for your own environments, such as `dev`, `staging`, or `prod`.
 Currently supported resources: Templates.
@@ -18,8 +18,8 @@ Before using this project, make sure you have the following:
   [Python Download and Installation](https://www.python.org/downloads/)
 
 - **BIOT Service ID and Secret Key**  
-  You will need valid credentials (service ID and secret key) for the Terraform to authenticate with the BIOT APIs.  
-  See the [BIOT Service Credentials documentation](https://docs.biot-med.com/docs/technical-information) (under the "Terraform Service User" section) for details on how to obtain these.
+  You will need valid credentials (service ID and secret key) for the Terraform to authenticate with the BioT APIs.  
+  See the [BioT Service Credentials documentation](https://docs.biot-med.com/docs/technical-information) (under the "Terraform Service User" section) for details on how to obtain these.
 
 ---
 
@@ -114,7 +114,7 @@ envs/
     └── variables.tf
 
 modules/
-└── templates/           # Terraform modules for different BIOT template types
+└── templates/           # Terraform modules for different BioT template types
     ├── caregiver/       # Caregiver template module variations
     │   ├── caregiver-type1.tf
     │   ├── caregiver-type2.tf
@@ -130,7 +130,7 @@ modules/
 
 ### `envs/dev/main.tf`
 
-This `main.tf` acts as the entry point for managing BIOT templates in the `dev` environment.
+This `main.tf` acts as the entry point for managing BioT templates in the `dev` environment.
 
 ### `public.auto.tfvars`
 
@@ -140,7 +140,7 @@ This file contains **non-sensitive, environment-specific variables** that are sa
   Store values that differ between environments (e.g., URLs or feature flags) but are **not secrets**.
 
 - **Important:**  
-  You **must update** the `biot_base_url` value to match the URL of your BIOT environment, for example:
+  You **must update** the `biot_base_url` value to match the URL of your BioT environment, for example:
 
   ```hcl
   biot_base_url = "https://api.dev.yourproject.biot-med.com"
@@ -177,7 +177,7 @@ If you decide to use a different filename for your secrets, make sure to add tha
 
 Modules form the core infrastructure of the project and are **shared across all environments**. This means the module code is the same whether you are working with `dev`, `staging`, or `prod`.
 
-Biot's terraform provider currently supported modules: Templates.
+BioT's terraform provider currently supported modules: Templates.
 
 ## Template Module
 
@@ -188,7 +188,7 @@ Template module contains a `main.tf` file that includes several **child modules*
 - `device/`
 - ...and others
 
-These child modules represent different types of BIOT templates.
+These child modules represent different types of BioT templates.
 
 Each child module contains multiple `.tf` files like `doctor.tf`, `nurse.tf`, etc. These files are where the actual template configurations are managed and defined.
 
@@ -198,11 +198,11 @@ This modular design helps keep your template infrastructure organized, reusable,
 
 ### Module: `provider.tf`
 
-Each module contains its own `provider.tf` file where the **BIOT provider** is defined.  
+Each module contains its own `provider.tf` file where the **BioT provider** is defined.  
 
-This ensures that the module is properly connected to the BIOT API using the provider configuration passed from the environment’s main Terraform configuration.  
+This ensures that the module is properly connected to the BioT API using the provider configuration passed from the environment’s main Terraform configuration.  
 
-By defining the provider inside each module, we keep modules self-contained and able to interact with the BIOT service independently.
+By defining the provider inside each module, we keep modules self-contained and able to interact with the BioT service independently.
 
 ---
 
@@ -210,7 +210,7 @@ By defining the provider inside each module, we keep modules self-contained and 
 
 The `variables.tf` file in each module declares the variables the module expects to receive.  
 
-A key variable across all child template modules is a **map of BIOT templates**. This map contains template IDs and related data that modules use dynamically instead of hardcoding values.  
+A key variable across all child template modules is a **map of BioT templates**. This map contains template IDs and related data that modules use dynamically instead of hardcoding values.  
 
 Using this map allows the modules to work across different environments seamlessly, as each environment’s `main.tf` provides its own environment-specific map.  
 
@@ -224,7 +224,7 @@ This structure helps maintain flexibility and avoids environment-specific hardco
 
 ## Scripts
 
-To simplify working with the BIOT Terraform provider, this project includes several helper Python scripts.  
+To simplify working with the BioT Terraform provider, this project includes several helper Python scripts.  
 Each script should be run from within a specific environment folder (e.g., `envs/dev`, `envs/staging`, etc.) unless specified differently.
 
 ---
@@ -241,8 +241,8 @@ Generates the `biot_templates_map` variable for the current environment.
   ```
 
 - **What it does:**
-This script reads your BIOT credentials (from secret.auto.tfvars) and base URL (from public.auto.tfvars),
-connects to the BIOT API, and fetches all existing templates for the current environment.
+This script reads your BioT credentials (from secret.auto.tfvars) and base URL (from public.auto.tfvars),
+connects to the BioT API, and fetches all existing templates for the current environment.
 
 It then generates a Terraform-compatible biot_templates_map variable based on the live data,
 which can be used throughout your configuration without hardcoding template IDs.
@@ -255,7 +255,7 @@ If you’re using the init_templates.py or generate_template.py scripts (explain
 
 ### `generate_template.py`
 
-Creates a new `.tf` file for a specific BIOT template and updates the project structure accordingly.
+Creates a new `.tf` file for a specific BioT template and updates the project structure accordingly.
 
 - **Supported Template Types**:
   - patient
@@ -320,7 +320,7 @@ Initializes the full templates infrastructure for the current environment by gen
 
 - **What it does:**
 
-  Automatically runs generate_template.py for each existing template retrieved from the BIOT API (based on credentials and biot_base_url in the current environment).
+  Automatically runs generate_template.py for each existing template retrieved from the BioT API (based on credentials and biot_base_url in the current environment).
 
   Creates the full folder structure under modules/templates/, including:
 
@@ -354,7 +354,7 @@ python3 scripts/create_env.py
 
 ### ⚠️ Destructive Changes Warning
 
-The BIOT Terraform provider includes built-in protection against **destructive changes** — changes that would result in data loss (e.g., deleting measurements)
+The BioT Terraform provider includes built-in protection against **destructive changes** — changes that would result in data loss (e.g., deleting measurements)
 
 #### 🛑 What happens:
 
