@@ -29,10 +29,12 @@ def generate_template(template_entity_type, template_name):
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
     if result.returncode == 0: 
-        print(f"✅ Generated [{template_name}.tf] file") 
+        print(f"✅ Generated [{template_name}.tf] file")
+        return True
     else: 
         print(f"❌ Failed to generate [{template_name}.tf] files") 
         print("stderr:", result.stderr)
+        return False
 
 def check_tfstate_in_current_dir():
     tfstate_files = ["terraform.tfstate", "terraform.tfstate.backup"]
@@ -54,6 +56,7 @@ def main():
 
     templates_to_process = templates['data']
     processed_ids = set()
+    failed_templates = []
     remaining_templates = templates_to_process.copy()
     
     while remaining_templates:
@@ -78,16 +81,34 @@ def main():
                 continue
 
             # Parent is processed (or no parent), so process this template
-            generate_template(template_entity_type, template_name)
-            processed_ids.add(template_id)
-            progress_made = True
+            success = generate_template(template_entity_type, template_name)
+            if success:
+                processed_ids.add(template_id)
+                progress_made = True
+            else:
+                # Track failed templates but don't mark as processed
+                failed_templates.append(f"{template_entity_type}:{template_name}")
+                # Still mark progress to avoid infinite loop, but don't add to processed_ids
+                progress_made = True
 
         if not progress_made:
             print("No progress made ! printing next_round:")
             print(next_round)
+            if failed_templates:
+                print(f"\n⚠️  Previously failed templates: {failed_templates}")
             raise RuntimeError("Could not resolve dependencies — circular or missing parent IDs?")
         
         remaining_templates = next_round
+    
+    # Report failed templates at the end
+    if failed_templates:
+        print(f"\n⚠️  Summary: {len(failed_templates)} template(s) failed to generate:")
+        for failed in failed_templates:
+            print(f"   - {failed}")
+        print("\n💡 You can try generating these templates individually using:")
+        print("   python3 ../../scripts/generate_template.py --type=<entity-type> --name=<template-name>")
+    else:
+        print("\n✅ All templates generated successfully!")
     
 if __name__ == "__main__":
     main()

@@ -99,11 +99,51 @@ def get_template_resource(entity_type, template_name):
     
     return None
 
+def convert_valid_templates_to_reference(value):
+    """Convert a list of template IDs to lookup function expressions."""
+    if not isinstance(value, list) or not value:
+        return value
+    
+    lookup_expressions = []
+    for template_id in value:
+        if isinstance(template_id, str):
+            template_resource = get_template_resource_by_id(template_id)
+            if template_resource:
+                template_name = extract_template_value_from_resource(template_resource, "name")
+                lookup_expressions.append(f'lookup(var.biot_templates_map["{template_name}"], "id", null)')
+            else:
+                # Fallback to original ID if template not found in state
+                lookup_expressions.append(f'"{template_id}"')
+        else:
+            lookup_expressions.append(str(template_id))
+    
+    return RawHCL("[ " + ", ".join(lookup_expressions) + " ]")
+
+def process_valid_templates_recursively(data):
+    """Recursively process data structure to convert valid_templates_to_reference values."""
+    if isinstance(data, dict):
+        processed = {}
+        for key, value in data.items():
+            if key == "valid_templates_to_reference":
+                processed[key] = convert_valid_templates_to_reference(value)
+            elif isinstance(value, (dict, list)):
+                processed[key] = process_valid_templates_recursively(value)
+            else:
+                processed[key] = value
+        return processed
+    elif isinstance(data, list):
+        return [process_valid_templates_recursively(item) for item in data]
+    else:
+        return data
+
 def generate_resource_block(resource, level=0):
     resource_type = resource["type"]
     resource_name = resource["name"]
     attributes = resource.get("attributes", {})
     last_keys_to_render = ["custom_attributes", "builtin_attributes", "template_attributes"]
+
+    # Process attributes recursively to convert valid_templates_to_reference at all nesting levels
+    attributes = process_valid_templates_recursively(attributes)
 
     indent = INDENT * level
     lines = [f'{indent}resource "{resource_type}" "{resource_name}" {{']
@@ -165,8 +205,9 @@ def render_value_json(value, indent_level):
         formatted_json = "\n".join(indent + "  " + line for line in json_lines)
         return f"jsonencode(\n{formatted_json}\n{indent})"
     except Exception:
-        # Fallback: just render as a quoted string
-        return f"\"{value}\""
+        # Fallback: just render as a quoted string (escape backslashes and quotes)
+        escaped = str(value).replace('\\', '\\\\').replace('"', '\\"')
+        return f"\"{escaped}\""
 
 def format_value(value, level=1):
     indent = INDENT * level
@@ -181,7 +222,8 @@ def format_value(value, level=1):
             heredoc_tag = "EOT"
             return f"<<-{heredoc_tag}\n{value.strip()}\n{heredoc_tag}"
         else:
-            escaped = value.replace('"', '\\"')
+            # Escape backslashes first, then double quotes
+            escaped = value.replace('\\', '\\\\').replace('"', '\\"')
             return f"\"{escaped}\""
     elif value is None:
         return "null"
