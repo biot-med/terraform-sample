@@ -58,12 +58,12 @@ def run_terraform_import(terraform_address, template_type, template_name):
         terraform_address,
         f"{template_type}:{template_name}"
     ]
-    print("▶️ Running:", " ".join(cmd))
+    print("Running:", " ".join(cmd))
     try:
         subprocess.run(cmd, check=True)
         return True
     except subprocess.CalledProcessError:
-        print(f"❌ Failed to import {template_type}:{template_name}")
+        print(f"Failed to import {template_type}:{template_name}")
         return False
 
 def main():
@@ -78,7 +78,7 @@ def main():
     imported_templates = set()
     missing_in_backend = []
 
-    print(f"📦 Scanning submodules in: {modules_path}\n")
+    print(f"Scanning submodules in: {modules_path}\n")
 
     # Loop over each submodule (folder == template type)
     skip_files = ['providers.tf', 'variables.tf', 'main.tf']
@@ -98,7 +98,7 @@ def main():
             resource_name, template_name = extract_biot_template_resource(file_path)
 
             if not resource_name or not template_name:
-                print(f"⚠️ Skipping {file_path} — could not parse resource or template name.")
+                print(f"Skipping {file_path} — could not parse resource or template name.")
                 continue
 
             # Validate against backend
@@ -110,18 +110,18 @@ def main():
                 if success:
                     imported_templates.add(key)
             else:
-                print(f"❌ Not found in backend: {template_type}:{template_name} ({terraform_address})")
+                print(f"Not found in backend: {template_type}:{template_name} ({terraform_address})")
                 missing_in_backend.append(key)
 
     unmatched_backend = backend_set - imported_templates
 
-    print("\n✅ Import Complete.\n")
+    print("\nImport Complete.\n")
 
     if missing_in_backend:
         print("Templates defined in code but missing in backend:")
         for t_type, t_name in missing_in_backend:
             print(f"  - {t_type}:{t_name}")
-        print("❓The above templates are likely new and haven't been created in this environment yet. If they already exist under a different name, you'll need to import them manually using: 'terraform import biot_template.<resource-name> entity-type:template-name'")
+        print("The above templates are likely new and haven't been created in this environment yet. If they already exist under a different name, you'll need to import them manually using: 'terraform import biot_template.<resource-name> entity-type:template-name'")
 
     # if unmatched_backend:
     #     print("📌 Templates in backend but not imported (not found in code):")

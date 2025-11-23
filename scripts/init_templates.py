@@ -17,22 +17,21 @@ def import_template(template_name, template_entity_type):
     result = subprocess.run(cmd, capture_output=True, text=True)
 
     if result.returncode == 0:
-        print(f"✅ Imported {template_name}")
+        print(f"Imported {template_name}")
     else:
-        print(f"❌ Failed to import {template_name}: {result.stderr}")
+        print(f"Failed to import {template_name}: {result.stderr}")
 
 def generate_template(template_entity_type, template_name):
     script_path = os.path.join(CURRENT_PATH, "generate_template.py")
     cmd = f"python3 {script_path} --type={template_entity_type} --name={template_name} --skip_tfvars={True}"
-
     print(f"Going to generate template -  Name: {template_name}, Type: {template_entity_type}")
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
     if result.returncode == 0: 
-        print(f"✅ Generated [{template_name}.tf] file")
+        print(f"Generated [{template_name}.tf] file")
         return True
     else: 
-        print(f"❌ Failed to generate [{template_name}.tf] files") 
+        print(f"Failed to generate [{template_name}.tf] files") 
         print("stderr:", result.stderr)
         return False
 
@@ -41,7 +40,7 @@ def check_tfstate_in_current_dir():
     found = [f for f in tfstate_files if os.path.exists(f)]
 
     if found:
-        print(f"❌ Terraform state file(s) already exist for current env, It is not allowed to run initialization agian. If you wish to run initialization you have to clean this terraform environment first.")
+        print(f"Terraform state file(s) already exist for current env, It is not allowed to run initialization agian. If you wish to run initialization you have to clean this terraform environment first.")
         sys.exit(1)
 
 def main():
@@ -95,20 +94,20 @@ def main():
             print("No progress made ! printing next_round:")
             print(next_round)
             if failed_templates:
-                print(f"\n⚠️  Previously failed templates: {failed_templates}")
+                print(f"\nPreviously failed templates: {failed_templates}")
             raise RuntimeError("Could not resolve dependencies — circular or missing parent IDs?")
         
         remaining_templates = next_round
     
     # Report failed templates at the end
     if failed_templates:
-        print(f"\n⚠️  Summary: {len(failed_templates)} template(s) failed to generate:")
+        print(f"\nSummary: {len(failed_templates)} template(s) failed to generate:")
         for failed in failed_templates:
             print(f"   - {failed}")
-        print("\n💡 You can try generating these templates individually using:")
+        print("\nYou can try generating these templates individually using:")
         print("   python3 ../../scripts/generate_template.py --type=<entity-type> --name=<template-name>")
     else:
-        print("\n✅ All templates generated successfully!")
+        print("\nAll templates generated successfully!")
     
 if __name__ == "__main__":
     main()

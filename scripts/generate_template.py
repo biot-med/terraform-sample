@@ -49,21 +49,21 @@ def import_template_to_tfstate(project_dir, entity_type, template_name):
         result = subprocess.run(cmd, capture_output=True, text=True)
 
         if result.returncode == 0:
-            print(f"✅ Imported {template_name}")
+            print(f"Imported {template_name}")
         else:
-            raise RuntimeError(f"❌ Failed to import {template_name}: {result.stderr}")
+            raise RuntimeError(f"Failed to import {template_name}: {result.stderr}")
 
     finally:
         # Delete temporary file regardless of success or failure
         try:
             os.remove(temp_file_path)
-            print(f"🧹 Deleted temp file: '{temp_file_path}'")
+            print(f"Deleted temp file: '{temp_file_path}'")
         except FileNotFoundError:
-            print(f"⚠️ File '{temp_file_path}' not found.")
+            print(f"File '{temp_file_path}' not found.")
         except PermissionError:
-            print(f"🚫 Permission denied deleting '{temp_file_path}'.")
+            print(f"Permission denied deleting '{temp_file_path}'.")
         except Exception as e:
-            print(f"❌ Unexpected error deleting '{temp_file_path}': {e}")
+            print(f"Unexpected error deleting '{temp_file_path}': {e}")
 
 def get_template_resource_by_id(template_id):
     with open("./terraform.tfstate", 'r') as f:
@@ -296,7 +296,7 @@ def add_tf_module_to_main():
 
     with open("./main.tf", "a") as f:
         f.write("\n" + module_block)
-        print(f"✅ Added module block for [templates] to main.tf")
+        print(f"Added module block for [templates] to main.tf")
 
 def create_providers_tf(dir_path):
     providers_tf_path = os.path.join(dir_path, "providers.tf")
@@ -315,7 +315,7 @@ terraform {
     with open(providers_tf_path, "w") as f:
         f.write(content)
 
-    print(f"✅ Created providers.tf in {dir_path}")
+    print(f"Created providers.tf in {dir_path}")
 
 def create_main_tf(project_dir):
     main_tf_path = os.path.join(project_dir, "main.tf")
@@ -323,7 +323,7 @@ def create_main_tf(project_dir):
     with open(main_tf_path, "w") as f:
         f.write("\n")
 
-    print(f"✅ Created empty main.tf for [{project_dir}]")
+    print(f"Created empty main.tf for [{project_dir}]")
 
 # Returns true if created, false if not.
 def create_module_if_not_exist(dir_path, include_main=True):
@@ -347,7 +347,7 @@ def add_module_to_main(main_dir_path, module_name, module_source):
 
     with open(f"{main_dir_path}/main.tf", "a") as f:
         f.write("\n" + module_block)
-        print(f"✅ Added module block for [{module_name}] to [{main_dir_path}/main.tf]")
+        print(f"Added module block for [{module_name}] to [{main_dir_path}/main.tf]")
 
 def remove_module_from_main(main_dir_path, module_name):
     main_tf_path = f"{main_dir_path}/main.tf"
@@ -363,25 +363,25 @@ def remove_module_from_main(main_dir_path, module_name):
         with open(main_tf_path, "w") as f:
             f.write(updated_content)
 
-        print(f"🧹 Removed module block for [{module_name}] from [{main_tf_path}]")
+        print(f"Removed module block for [{module_name}] from [{main_tf_path}]")
 
     except FileNotFoundError:
-        print(f"⚠️ File not found: {main_tf_path} while trying to rollback template")
+        print(f"File not found: {main_tf_path} while trying to rollback template")
     except Exception as e:
-        print(f"❌ Error removing module block: {e}")
+        print(f"Error removing module block: {e}")
 
 def run_terraform_init(working_dir="./"):
     """
     Runs `terraform init` in the specified working directory.
     Defaults to the current directory.
     """
-    print(f"📦 Running `terraform init` in [{working_dir}]")
+    print(f"Running `terraform init` in [{working_dir}]")
     result = subprocess.run(["terraform", "init"], cwd=working_dir, capture_output=True, text=True)
 
     if result.returncode == 0:
-        print("✅ Terraform initialized successfully.")
+        print("Terraform initialized successfully.")
     else:
-        print("❌ Terraform init failed.")
+        print("Terraform init failed.")
         print("STDOUT:", result.stdout)
         print("STDERR:", result.stderr)
         raise RuntimeError("Terraform initialization failed.")
@@ -420,14 +420,14 @@ def create_template_ids_variable_file(module_path):
     with open(file_path, "w") as f:
         f.write(variable_tf_content)
 
-    print(f"✅ Created 'variables.tf' in: {file_path}")
+    print(f"Created 'variables.tf' in: {file_path}")
 
 def update_template_ids_tf_file(file_path, template_id, entity_type, template_name):
     template_block_header = TEMPLATES_MAP_VAR_NAME
     new_entry = f'    "{template_id}" = {{ name = "{template_name}" }}'
 
     if not os.path.exists(file_path):
-        print(f"📄 File not found. Creating new: {file_path}")
+        print(f"File not found. Creating new: {file_path}")
         content = f'''output "{template_block_header}" {{
   value = {{
 {new_entry}
@@ -436,7 +436,7 @@ def update_template_ids_tf_file(file_path, template_id, entity_type, template_na
 '''
         with open(file_path, 'w') as f:
             f.write(content)
-        print(f"✅ Created {file_path} with initial {TEMPLATES_MAP_VAR_NAME}.")
+        print(f"Created {file_path} with initial {TEMPLATES_MAP_VAR_NAME}.")
         return
 
     with open(file_path, 'r') as f:
@@ -455,7 +455,7 @@ def update_template_ids_tf_file(file_path, template_id, entity_type, template_na
 }}'''
         with open(file_path, 'w') as f:
             f.write(updated_content)
-        print(f"✅ Appended new output block to {file_path}.")
+        print(f"Appended new output block to {file_path}.")
         return
 
     # Extract existing entries
@@ -475,18 +475,18 @@ def update_template_ids_tf_file(file_path, template_id, entity_type, template_na
         new_body = '\n'.join(updated_lines)
         updated_block = f'{header}{new_body}{footer}'
         updated_content = re.sub(pattern, updated_block, content, flags=re.DOTALL)
-        print(f"♻️ Updated existing entry '{template_name}' in {file_path}")
+        print(f"Updated existing entry '{template_name}' in {file_path}")
     else:
         # Append new entry
         new_body = body + '\n' + new_entry
         updated_block = f'{header}{new_body}{footer}'
         updated_content = re.sub(pattern, updated_block, content, flags=re.DOTALL)
-        print(f"➕ Added new entry '{template_name}' to {file_path}")
+        print(f"Added new entry '{template_name}' to {file_path}")
 
     # Write back to file
     with open(file_path, 'w') as f:
         f.write(updated_content)
-    print(f"✅ Saved changes to {file_path}")
+    print(f"Saved changes to {file_path}")
 
 def validate_template_creation(project_dir, template_resource, entity_type, template_name):
     instances = template_resource.get("instances", [])
@@ -552,7 +552,6 @@ def main():
     template_resource = get_template_resource(entity_type, template_name)
     validate_template_creation(project_dir, template_resource, entity_type, template_name)
     write_tf_file(project_dir, template_resource, entity_type, template_name)
-
     # Required to load modules
     run_terraform_init()
 
