@@ -100,7 +100,7 @@ def create_new_env_folder():
         subprocess.run(["python3", "../../scripts/populate_tfstate.py"], check=True)
 
     except Exception as e:
-        print(f"\n❌ Error occurred: {e}")
+        print(f"\nError occurred: {e}")
         delete_folder(new_env_path)
         raise  # Re-raise the error after cleanup
 

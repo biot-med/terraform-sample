@@ -44,7 +44,7 @@ def write_or_update_tfvars(tfvars_path):
     if not os.path.exists(tfvars_path):
         with open(tfvars_path, 'w') as f:
             f.write(new_var_block + "\n")
-        print(f"✅ Created {tfvars_path} with biot_templates_map")
+        print(f"Created {tfvars_path} with biot_templates_map")
         return
 
     with open(tfvars_path, 'r') as f:
@@ -55,7 +55,7 @@ def write_or_update_tfvars(tfvars_path):
     with open(tfvars_path, 'w') as f:
         f.write(updated_content)
 
-    print(f"✅ Updated {tfvars_path} with biot_templates_map")
+    print(f"Updated {tfvars_path} with biot_templates_map")
 
 # --------------------------
 # Main entry point
@@ -70,5 +70,5 @@ if __name__ == "__main__":
     try:
         write_or_update_tfvars(tfvars_path)
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
         sys.exit(1)
