@@ -17,6 +17,14 @@ Before using this project, make sure you have the following:
 - **Python** version **3.x+** installed  
   [Python Download and Installation](https://www.python.org/downloads/)
 
+- **Python dependencies** installed  
+  Install required Python packages from the project root directory:
+  ```bash
+  pip3 install -r scripts/requirements.txt
+  ```
+  
+  **Note:** Make sure you're in the project root directory when running this command. If `pip3` is not available, try `pip` instead.
+
 - **BIOT Service ID and Secret Key**  
   You will need valid credentials (service ID and secret key) for the Terraform to authenticate with the BioT APIs.  
   See the [BioT Service Credentials documentation](https://docs.biot-med.com/docs/technical-information) (under the "Terraform Service User" section) for details on how to obtain these.
