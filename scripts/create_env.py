@@ -1,26 +1,28 @@
 import os
 import shutil
 import subprocess
+from common_utils import read_main_tf_required_providers
 
-MAIN_TF_CONTENT = """terraform {
-  required_providers {
-    biot = {
-      source  = "registry.terraform.io/biot-med/biot-gen2"
-      version = "1.0.0"
-    }
-  }
-}
+def get_main_tf_content():
+    """Generate main.tf content using required_providers from envs/dev/main.tf"""
+    # Read required_providers from envs/dev/main.tf as template
+    dev_main_tf_path = os.path.join(os.getcwd(), "envs", "dev", "main.tf")
+    required_providers = read_main_tf_required_providers(dev_main_tf_path)
+    
+    return f"""terraform {{
+{required_providers}
+}}
 
-provider "biot" {
+provider "biot" {{
   base_url           = var.biot_base_url
   service_id         = var.biot_service_id
   service_secret_key = var.biot_service_secret_key
-}
+}}
 
-module templates {
+module templates {{
     source = "../../modules/templates"
     biot_templates_map = var.biot_templates_map
-}
+}}
 """
 
 VARIABLES_TF_CONTENT = """variable "biot_base_url" {
@@ -88,16 +90,18 @@ def create_new_env_folder():
 
     try:
         # Create files
-        write_file(new_env_path, "main.tf", MAIN_TF_CONTENT)
+        write_file(new_env_path, "main.tf", get_main_tf_content())
         write_file(new_env_path, "variables.tf", VARIABLES_TF_CONTENT)
         write_file(new_env_path, "public.auto.tfvars", create_public_auto_tfvars(base_url))
         write_file(new_env_path, "secret.auto.tfvars", create_secret_auto_tfvars(service_id, secret_key))
 
-        os.chdir(f"envs/{env_name}")
+        env_dir = os.path.join("envs", env_name)
+        os.chdir(env_dir)
         # Run external scripts
-        subprocess.run(["python3", "../../scripts/generate_biot_templates_tfvars.py"], check=True)
+        scripts_dir = os.path.join(os.pardir, os.pardir, "scripts")
+        subprocess.run(["python3", os.path.join(scripts_dir, "generate_biot_templates_tfvars.py")], check=True)
         subprocess.run(["terraform", "init"], cwd='.', check=True)
-        subprocess.run(["python3", "../../scripts/populate_tfstate.py"], check=True)
+        subprocess.run(["python3", os.path.join(scripts_dir, "populate_tfstate.py")], check=True)
 
     except Exception as e:
         print(f"\nError occurred: {e}")
