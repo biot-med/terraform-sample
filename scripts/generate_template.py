@@ -299,17 +299,16 @@ def add_tf_module_to_main():
         print(f"Added module block for [templates] to main.tf")
 
 def create_providers_tf(dir_path):
+    from common_utils import read_main_tf_required_providers
+    
     providers_tf_path = os.path.join(dir_path, "providers.tf")
     
-    content = '''
-terraform {
-  required_providers {
-    biot = {
-      source  = "registry.terraform.io/biot-med/biot-gen2"
-      version = "1.0.0"
-    }
-  }
-}
+    # Read required_providers from current working directory's main.tf
+    required_providers = read_main_tf_required_providers()
+    
+    content = f'''terraform {{
+{required_providers}
+}}
 '''.lstrip()
 
     with open(providers_tf_path, "w") as f:
