@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.2] - 2025-11-26
+
+### Added
+- Updated BioT's provider source to 1.0.2
+- Updated generate_template python script to handle default_values as jsonencoded when needed.
+
 ## [1.0.1] - 2025-11-24
 
 ### Added
