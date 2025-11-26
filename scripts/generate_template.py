@@ -12,6 +12,9 @@ PARENT_DIR = os.path.abspath(os.path.join(CURRENT_PATH, os.pardir))
 TEMPLATES_MAP_VAR_NAME = "biot_templates_map"
 INDENT = "  "
 
+# Keys that should be rendered using jsonencode() when they contain JSON strings
+JSON_ENCODE_KEYS = ["value_json", "default_value"]
+
 class RawHCL: #Used for when formating values using terraform functions like 'lookup' to not have unwanted ""
     def __init__(self, expr):
         self.expr = expr
@@ -179,8 +182,8 @@ def render_block(name, content, level):
             for k, v in item.items():
                 if k == "id":
                     continue  # skip id field inside template_attributes
-                if k == "value_json":
-                    # Render value with jsonencode if possible
+                if should_use_jsonencode(k, v):
+                    # Render value with jsonencode if key is in JSON_ENCODE_KEYS
                     rendered_value = render_value_json(v, level + 2)
                     lines.append(f"{indent}{INDENT*2}{k} = {rendered_value}")
                 else:
@@ -193,6 +196,25 @@ def render_block(name, content, level):
 
     # default rendering
     return f"{indent}{name} = {format_value(content, level)}"
+
+def should_use_jsonencode(key, value):
+    """
+    Determine if a key-value pair should use jsonencode().
+    Returns True if the key is in JSON_ENCODE_KEYS and the value is a JSON string
+    that parses to an object or array.
+    """
+    if key not in JSON_ENCODE_KEYS:
+        return False
+    
+    if not isinstance(value, str) or value is None:
+        return False
+    
+    try:
+        parsed = json.loads(value)
+        # Only use jsonencode for objects and arrays, not primitives
+        return isinstance(parsed, (dict, list))
+    except (json.JSONDecodeError, ValueError):
+        return False
 
 def render_value_json(value, indent_level):
     indent = INDENT * indent_level
@@ -251,7 +273,12 @@ def format_value(value, level=1):
         for key, val in value.items():
             if key == "id":
                 continue  # Skip "id" in object
-            lines.append(f"{next_indent}{key} = {format_value(val, level + 1)}")
+            # Check if this key should use jsonencode
+            if should_use_jsonencode(key, val):
+                rendered_val = render_value_json(val, level + 1)
+                lines.append(f"{next_indent}{key} = {rendered_val}")
+            else:
+                lines.append(f"{next_indent}{key} = {format_value(val, level + 1)}")
         lines.append(f"{indent}}}")
         return "\n".join(lines)
 
