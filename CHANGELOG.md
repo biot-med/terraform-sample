@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.4] - 2026-06-03
+
+### Added
+- Updated BioT's provider source to 1.0.7
+
 ## [1.0.3] - 2026-01-28
 
 ### Added
