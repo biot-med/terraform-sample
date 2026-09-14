@@ -3,7 +3,10 @@
 ## [1.0.5] - 2026-09-14
 
 ### Added
-- Updated BioT's provider source to 1.0.8
+- Updated BioT's provider source to 1.0.10
+    - Added `ui_configuration` to template attributes for configuring date/date-time display style
+    - Added branding category to organization template, with read-only `public_access` on built-in attributes
+    - Fixed "Provider produced inconsistent result after apply" error on the `validation.unique` attribute
 
 ## [1.0.4] - 2026-06-03
 
