@@ -15,6 +15,11 @@ INDENT = "  "
 # Keys that should be rendered using jsonencode() when they contain JSON strings
 JSON_ENCODE_KEYS = ["value_json", "default_value"]
 
+# Keys the provider marks as read-only (Computed). The API returns them, but writing
+# them into the config makes `terraform apply` fail with:
+#   "Invalid Configuration for Read-Only Attribute"
+READ_ONLY_KEYS = ["public_access"]
+
 class RawHCL: #Used for when formating values using terraform functions like 'lookup' to not have unwanted ""
     def __init__(self, expr):
         self.expr = expr
@@ -139,6 +144,15 @@ def process_valid_templates_recursively(data):
     else:
         return data
 
+def strip_read_only_keys(data):
+    """Recursively remove provider read-only keys so they never reach the generated config."""
+    if isinstance(data, dict):
+        return {k: strip_read_only_keys(v) for k, v in data.items() if k not in READ_ONLY_KEYS}
+    elif isinstance(data, list):
+        return [strip_read_only_keys(item) for item in data]
+    else:
+        return data
+
 def generate_resource_block(resource, level=0):
     resource_type = resource["type"]
     resource_name = resource["name"]
@@ -147,6 +161,9 @@ def generate_resource_block(resource, level=0):
 
     # Process attributes recursively to convert valid_templates_to_reference at all nesting levels
     attributes = process_valid_templates_recursively(attributes)
+
+    # Drop read-only attributes returned by the API; the provider rejects them in config.
+    attributes = strip_read_only_keys(attributes)
 
     indent = INDENT * level
     lines = [f'{indent}resource "{resource_type}" "{resource_name}" {{']
