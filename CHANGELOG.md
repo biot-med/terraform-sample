@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.6] - 2026-09-14
+
+### Added
+- Updated BioT's provider source to 1.0.11
+    - Fixed `validation.unique` being planned as `false` even when set to `true`, which caused a permanent diff on templates with unique attributes
+- Generated templates no longer include provider read-only attributes such as `public_access`, which made `terraform apply` fail on the organization template
+
 ## [1.0.5] - 2026-09-14
 
 ### Added
