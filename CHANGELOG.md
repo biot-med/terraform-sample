@@ -3,6 +3,7 @@
 ## [1.1.0] - 2026-10-07
 
 ### Added
+- Updated BioT's provider source to 1.1.0
 - Support for ABAC actions, conditions and rules - `scripts/abac/init_abac.py` imports them into `modules/abac`
 - Requires Terraform 1.14+
 

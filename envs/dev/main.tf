@@ -4,7 +4,7 @@ terraform {
   required_providers {
     biot = {
       source  = "biot-med/biot-gen2"
-      version = "= 1.1.0-dev"
+      version = "1.1.0"
     }
   }
 }
