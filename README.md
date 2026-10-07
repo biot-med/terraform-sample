@@ -11,7 +11,7 @@ Currently supported resources: Templates.
 
 Before using this project, make sure you have the following:
 
-- **Terraform** version **1.5+** installed  
+- **Terraform** version **1.14+** installed (required for `terraform query`)  
   [Terraform Installation Guide](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
 
 - **Python** version **3.x+** installed  
@@ -40,11 +40,11 @@ After forking this project to initialize the terraform project and sync it with 
 1. Remove 'example' extension from the envs/dev/secret.auto.tfvars.example file (the new name should be secret.auto.tfvars)
 2. Make sure the values in both secret.auto.tfvars and public.auto.tfvars are updated and correct for your environment (more explanations in the below sections about how to get the values)
 3. Navigate in the terminal to the envs/dev environment - `cd envs/dev`
-4. Run init script - `python3 ../../scripts/init_templates.py`
+4. Run init script - `python3 ../../scripts/templates/init_templates.py`
 
 After running the above steps you will have 'modules/templates' folder containing all of your template resources from your state ready to be managed in terraform.
 
-**Important:** Initialization script can run only once per project and should not be run again even on different environment. (for creating new environment in terraform find the instructions below)
+**Important:** Run the initialization script on DEV only, not on other environments (for creating a new environment in terraform find the instructions below). Re-running it on DEV is safe - templates already managed are skipped.
 
 ## Updating a Template via Terraform
 
@@ -61,8 +61,7 @@ It is possible to create new .tf file config with a new template but this may be
 A simple solution for that is creating the template via the BioT Console portal and then generate it in terraform using the following python script:
 
 1. Navigate to your dev env - `cd envs/dev`
-2. Run in terminal - `python3 ../../scripts/generate_template.py`
-3. The scripts will require you to type entity-type and template-name.
+2. Run in terminal - `python3 ../../scripts/templates/init_templates.py --type=<entity-type> --name=<template-name>`
 
 Supported entity-types:
 
@@ -85,17 +84,30 @@ You can find now the template under the modules/template/<entity-type> folder.
 ## Updating a Template via BioT Console and Sync Terraform with the Change
 
 In some cases we want to update our template resource but not sure exactly how to do if from terraform. 
-In this case you can change the template via the BioT Console portal and remove the resource management from terraform and auto-generating it again. 
-Here are the steps how to do that:
+In this case you can change the template via the BioT Console portal and regenerate its .tf file from it:
 
 1. Update the template via the console portal, e.g. add a new attribute.
-2. Remove the resource management from terraform:
+2. In your terminal - `cd envs/dev`
+3. In your terminal - `python3 ../../scripts/templates/init_templates.py --type=<entity-type> --name=<template-name> --refresh`
 
-   - Delete the relevant template's .tf file from the module/templates
-   - In your terminal - `cd envs/dev`
-   - In your terminal - `terraform state list`
-   - Copy the template full path you wish from the state list (from above step) and run - `terraform state rm <paste-template-full-path>`
-   - In your terminal - `python3 ../../scripts/generate_template.py` (more details in the [Creating a New Template](#creating-a-new-template) section)
+This method should only be used for development environments.
+
+## Managing ABAC Actions, Conditions and Rules
+
+ABAC objects are managed in the shared `modules/abac` module (`actions.tf`, `conditions.tf`, `rules.tf`) and imported with
+the [ABAC scripts](#abac-scripts-scriptsabac). Run them from your dev env - `cd envs/dev`.
+
+- **Import all existing ABAC objects** - `python3 ../../scripts/abac/init_abac.py`
+- **Import one created via the BioT Console** - `python3 ../../scripts/abac/init_abac.py --type=<action|condition|rule> --id=<id>`
+- **Update one changed via the BioT Console** - `python3 ../../scripts/abac/init_abac.py --type=<action|condition|rule> --id=<id> --refresh`
+
+Run `terraform plan` afterwards - it should show no changes.
+
+**Good to know:**
+- Changing `id` destroys and recreates the object, so check the plan before applying.
+- An action's or condition's `value` can't be changed once it exists - to switch it, give the object a new `id` as well.
+- Built-in objects can be imported and updated, but not destroyed. To stop managing one, use a `removed` block with
+  `lifecycle { destroy = false }` instead of just deleting its resource block.
 
 This method should only be used for development environments.
 
@@ -237,114 +249,97 @@ Each script should be run from within a specific environment folder (e.g., `envs
 
 ---
 
-### `generate_biot_templates_tfvars.py`
+### Template scripts (`scripts/templates/`)
 
+#### `init_templates.py`
+Generates the `.tf` config for the templates in the current environment and imports them into its terraform state.
+
+**Important:** use only on DEV. It creates infrastructure which is common for all envs - other environments should be managed by terraform only.
+
+- **Usage:**
+  ```bash
+  cd envs/dev
+  python3 ../../scripts/templates/init_templates.py                                    # every template not yet managed
+  python3 ../../scripts/templates/init_templates.py --type=caregiver                   # only caregiver templates
+  python3 ../../scripts/templates/init_templates.py --type=caregiver --name=nurse      # one template, e.g. created in the console
+  python3 ../../scripts/templates/init_templates.py --type=caregiver --name=nurse --refresh   # changed in the console - regenerate its .tf file
+  ```
+- **Supported entity types:** patient, caregiver, organization-user, organization, device, generic-entity, command,
+  device-alert, patient-alert, usage-session, registration-code
+- **What it does:**
+  - Fetches the templates from the BioT API (using the credentials and `biot_base_url` of the current environment).
+  - Writes each one to `modules/templates/<type>/<template-name>.tf`, parents before their children.
+  - Imports each template into the env's state.
+  - Creates the `modules/templates/<type>` folders with their `providers.tf` and `variables.tf`, and adds the modules to
+    `main.tf`, if missing.
+  - Runs `generate_biot_templates_tfvars.py` to update `biot_templates_map`.
+- Templates already in the state are skipped, so the script can be re-run at any time. A `.tf` file that exists without
+  its template in the state is never overwritten - the script reports it instead. `--refresh` overwrites the `.tf` files of
+  templates already managed with their current state in BioT.
+
+#### `generate_template.py` (deprecated)
+Use `init_templates.py --type=<type> --name=<template-name>` instead. Still works - it forwards to `init_templates.py` -
+but will be removed in a future release.
+
+#### `generate_biot_templates_tfvars.py`
 Generates the `biot_templates_map` variable for the current environment.
 
 - **Usage:**
-
   ```bash
   cd envs/dev
-  python3 ../../scripts/generate_biot_templates_tfvars.py
+  python3 ../../scripts/templates/generate_biot_templates_tfvars.py
   ```
+- **What it does:** reads your BioT credentials (from `secret.auto.tfvars`) and base URL (from `public.auto.tfvars`), fetches
+  all existing templates for the current environment, and writes a `biot_templates_map` variable from them, so your
+  configuration never hardcodes template IDs. The map is written to `biot_templates.auto.tfvars`; every env's `variables.tf`
+  declares `biot_templates_map` with an empty default, so environments that don't manage templates (e.g. ABAC only) work without it.
+- `init_templates.py` runs it automatically, so you only need it to refresh the map by hand.
 
-- **What it does:**
-This script reads your BioT credentials (from secret.auto.tfvars) and base URL (from public.auto.tfvars),
-connects to the BioT API, and fetches all existing templates for the current environment.
+#### `populate_tfstate.py`
+Imports the templates defined in `modules/templates` into a new environment's state. `create_env.py` runs it automatically.
 
-It then generates a Terraform-compatible biot_templates_map variable based on the live data,
-which can be used throughout your configuration without hardcoding template IDs.
+---
 
-You can use this script to update your environment's map if new templates was created, Also the other scripts
-that generates .tf files for you will automatically update this map.
+### ABAC scripts (`scripts/abac/`)
 
-- **Important:**
-If you’re using the init_templates.py or generate_template.py scripts (explained below), this script will run automatically — so you do not need to run it manually.
+Manage ABAC actions, conditions and rules in terraform. Their `.tf` files are generated into a shared module, `modules/abac`
+(`actions.tf`, `conditions.tf`, `rules.tf`), which every environment uses. Requires Terraform **1.14+** (`terraform query`).
 
-### `generate_template.py`
+#### `init_abac.py`
+Generates the `.tf` config for the ABAC objects in the current environment and imports them into its terraform state.
 
-Creates a new `.tf` file for a specific BioT template and updates the project structure accordingly.
-
-- **Supported Template Types**:
-  - patient
-  - caregiver
-  - organization-user
-  - organization
-  - device
-  - generic-entity
-  - command
-  - device-alert
-  - patient-alert
-  - usage-session
-  - registration-code
+**Important:** use only on DEV. Other environments should get their ABAC config through terraform.
 
 - **Usage:**
-
   ```bash
   cd envs/dev
-  python3 ../../scripts/generate_template.py --name=<template-name> --type=<template-type>
+  python3 ../../scripts/abac/init_abac.py                                    # everything not yet managed
+  python3 ../../scripts/abac/init_abac.py --type rule                        # only rules
+  python3 ../../scripts/abac/init_abac.py --type rule --id <rule-id>         # one object, e.g. created in the console
+  python3 ../../scripts/abac/init_abac.py --type rule --id <rule-id> --refresh   # changed in the console - regenerate its config
   ```
-
-  example - python3 ../../scripts/generate_template.py --name=nurse --type=caregiver
-
-- **Supported Template Types:**
-
-
-- **Important:**
-  The script will create the .tf file from the template of the specific env. it is suggested to use this only for dev
-  and to manage other environments by terraform only.
-
 - **What it does:**
-  Creates the .tf file for the template at:
-  modules/templates/<type>/<template-name>.tf
+  - Finds the objects with `terraform query`, using a temporary `.tfquery.hcl` file it writes and deletes itself. Other
+    `.tfquery.hcl` files in the env folder would change the results, so the script stops if it finds one.
+  - Writes each one to `modules/abac/<type>s.tf`, named after its id (e.g. `ADD_SELF_ID_FILTER_ACTION` -> `add_self_id_filter_action`).
+  - In rules, references the actions and conditions managed in the module instead of their id strings, so terraform creates them first.
+  - Imports each object into the env's state.
+  - Creates `modules/abac` and adds `module "abac"` to the env's `main.tf` if missing.
+- Objects already in the state are skipped, so the script can be re-run at any time. `--refresh` overwrites the config of
+  objects already managed with their current state in BioT.
 
-  Automatically creates:
-
-  The modules/templates/<type>/ directory if it doesn’t exist.
-
-  The required provider.tf and variables.tf files in the appropriate module folders (if missing).
-
-  Calls generate_biot_templates_tfvars.py internally to update the biot_templates_map with the latest templates from the environment.
-
-  Adds the template-type to the templates/main.tf module if missing and adds the templates module to the current env main.tf file if not exist there.
-
-- **Why it's useful:**
-  This script gives you a fast and consistent way to create template .tf config from the current backend state instaed.
-  This way, you can create a template manually through our console and then generate it's .tf config file here.
-   **Important:**: USE THIS METHOD ONLY FOR DEV. OTHER ENVIRONMENTS SHOULD BE MANAGED ONLY BY TERRAFORM.
-
-### `init_templates.py`
-
-Initializes the full templates infrastructure for the current environment by generating `.tf` files for **all existing templates**.
-
- **Important:** This script should only run on the DEV environment as it creates infrastructure which is common for all envs.
+#### `populate_abac_state.py`
+Prepares an environment for its first `terraform apply` of `modules/abac`.
 
 - **Usage:**
-
   ```bash
-  cd envs/dev
-  python3 ../../scripts/init_templates.py
+  cd envs/staging
+  python3 ../../scripts/abac/populate_abac_state.py
+  terraform apply
   ```
-
-- **What it does:**
-
-  Automatically runs generate_template.py for each existing template retrieved from the BioT API (based on credentials and biot_base_url in the current environment).
-
-  Creates the full folder structure under modules/templates/, including:
-
-  Individual <template-type>/<template-name>.tf files
-
-  Required provider.tf and variables.tf files (if missing)
-
-  Automatically runs generate_biot_templates_tfvars.py to update the biot_templates_map for the current environment.
-
-- **Important:**
-
-  This script is intended to be used once, when initializing a new environment.
-
-  It will only run if there is no existing .tfstate file in the current environment folder — to avoid overwriting or duplicating infrastructure.
-
-  Meant for bootstrapping your template setup when starting the project.
+- **What it does:** imports the objects defined in `modules/abac` that already exist in this environment (e.g. the ones
+  BioT ships), so `terraform apply` only creates what's missing instead of failing with "already exists".
+- `create_env.py` runs it automatically when `modules/abac` exists.
 
 ---
 

@@ -1,19 +1,39 @@
-#!/usr/bin/env python3
-import argparse
 import json
-import subprocess
-import sys
 import os
 import re
+import subprocess
+import sys
+
+import requests
+
+CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.abspath(os.path.join(CURRENT_PATH, os.pardir)))
+
+def fetch_biot_templates(base_url, token):
+    params = {
+        "searchRequest": json.dumps({
+            "limit": 10000
+        })
+    }
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    response = requests.get(f"{base_url}/settings/v1/templates/minimized", headers=headers, params=params)
+    response.raise_for_status()
+    data = response.json()
+
+    return data
 
 RESOURCE_TYPE = "biot_template"
-CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
-PARENT_DIR = os.path.abspath(os.path.join(CURRENT_PATH, os.pardir))
 TEMPLATES_MAP_VAR_NAME = "biot_templates_map"
 INDENT = "  "
 
 # Keys that should be rendered using jsonencode() when they contain JSON strings
 JSON_ENCODE_KEYS = ["value_json", "default_value"]
+
+# Set by the provider, not configurable - skipped when rendering nested attributes
+READ_ONLY_KEYS = ["id", "public_access"]
 
 class RawHCL: #Used for when formating values using terraform functions like 'lookup' to not have unwanted ""
     def __init__(self, expr):
@@ -41,8 +61,6 @@ def import_template_to_tfstate(project_dir, entity_type, template_name):
         f.write(f'resource "{RESOURCE_TYPE}" "{template_name}" {{}}\n\n')
 
     try:
-        run_terraform_init()
-
         # Import template to terraform.tfstate local file
         cmd = [
             "terraform", "import",
@@ -180,8 +198,8 @@ def render_block(name, content, level):
         for item in content:
             lines.append(f"{indent}{INDENT}{{")
             for k, v in item.items():
-                if k == "id":
-                    continue  # skip id field inside template_attributes
+                if k in READ_ONLY_KEYS:
+                    continue  # skip read-only fields inside template_attributes
                 if should_use_jsonencode(k, v):
                     # Render value with jsonencode if key is in JSON_ENCODE_KEYS
                     rendered_value = render_value_json(v, level + 2)
@@ -260,8 +278,8 @@ def format_value(value, level=1):
             for item in value:
                 lines.append(f"{next_indent}{{")
                 for key, val in item.items():
-                    if key == "id":
-                        continue  # Skip "id" in nested dict
+                    if key in READ_ONLY_KEYS:
+                        continue  # Skip read-only fields in nested dict
                     lines.append(f"{next_indent}{INDENT}{key} = {format_value(val, level + 2)}")
                 lines.append(f"{next_indent}}},")
             lines.append(f"{indent}]")
@@ -271,8 +289,8 @@ def format_value(value, level=1):
     elif isinstance(value, dict):
         lines = ["{"]
         for key, val in value.items():
-            if key == "id":
-                continue  # Skip "id" in object
+            if key in READ_ONLY_KEYS:
+                continue  # Skip read-only fields in object
             # Check if this key should use jsonencode
             if should_use_jsonencode(key, val):
                 rendered_val = render_value_json(val, level + 1)
@@ -401,12 +419,10 @@ def run_terraform_init(working_dir="./"):
     Runs `terraform init` in the specified working directory.
     Defaults to the current directory.
     """
-    print(f"Running `terraform init` in [{working_dir}]")
+    print("Installing modules (terraform init)...")
     result = subprocess.run(["terraform", "init"], cwd=working_dir, capture_output=True, text=True)
 
-    if result.returncode == 0:
-        print("Terraform initialized successfully.")
-    else:
+    if result.returncode != 0:
         print("Terraform init failed.")
         print("STDOUT:", result.stdout)
         print("STDERR:", result.stderr)
@@ -535,53 +551,87 @@ def validate_template_creation(project_dir, template_resource, entity_type, temp
             f"Parent templates must be generated before their children."
         )
 
-def main():
-    parser = argparse.ArgumentParser(description="Template Import CLI")
-    parser.add_argument(
-        "--name",
-        help="Template json-name (e.g., clinician)"
-    )
-    parser.add_argument(
-        "--type",
-        help="Entity type to import (e.g., caregiver)"
-    )
-    parser.add_argument(
-        "--skip_tfvars",
-        help="Flag indicating need to run tfvars update or not"
-    )
+# Scripts run from an env folder (e.g. envs/dev), two levels below the project root
+PROJECT_DIR = os.path.join(os.pardir, os.pardir)
 
-    args = parser.parse_args()
+def run_generate_tfvars():
+    subprocess.run(["python3", os.path.join(CURRENT_PATH, "generate_biot_templates_tfvars.py")], check=True)
 
-    entity_type = prompt_if_missing(args.type, "Enter the entity type")
-    template_name = prompt_if_missing(args.name, "Enter the template name")
+def get_template_tf_path(entity_type, template_name):
+    return os.path.join(PROJECT_DIR, "modules", "templates", entity_type, f"{template_name}.tf")
 
-    if not args.skip_tfvars:
-        subprocess.run(["python3", "../../scripts/generate_biot_templates_tfvars.py"], check=True)
+def read_managed_templates():
+    """Returns {template_id: terraform_address} for the templates in the env's terraform.tfstate"""
+    managed = {}
+    if not os.path.exists("terraform.tfstate"):
+        return managed
 
-    project_dir = f"../.."
+    with open("terraform.tfstate", "r") as f:
+        state = json.load(f)
 
-    templates_dir = f"{project_dir}/modules/templates"
+    for resource in state.get("resources", []):
+        if resource.get("type") != RESOURCE_TYPE or resource.get("mode") != "managed":
+            continue
+        prefix = f"{resource['module']}." if resource.get("module") else ""
+        for instance in resource.get("instances", []):
+            template_id = instance.get("attributes", {}).get("id")
+            if template_id:
+                managed[template_id] = f"{prefix}{RESOURCE_TYPE}.{resource['name']}"
+
+    return managed
+
+def prepare_template_modules(entity_types):
+    """
+    Creates the templates module and the modules of the given entity types if missing, then runs `terraform init`
+    once if any of them isn't installed yet - Terraform must install a module before importing into it
+    """
+    templates_dir = os.path.join(PROJECT_DIR, "modules", "templates")
     # Creating templates module if not exist
     is_templates_module_created = create_module_if_not_exist(templates_dir)
     # Adding the templates module to the current dir main.tf
     if is_templates_module_created:
         add_module_to_main("./", "templates", "../../modules/templates")
-    
-    # Creating the entity-type module if not exist
-    is_entity_type_module_created = create_module_if_not_exist(f"{templates_dir}/{entity_type}", include_main=False)
-    # Adding the entity-type module to the templates module's main.tf
-    if is_entity_type_module_created:
-        add_module_to_main(f"{project_dir}/modules/templates", entity_type, f"./{entity_type}")
+
+    for entity_type in entity_types:
+        # Creating the entity-type module if not exist
+        is_entity_type_module_created = create_module_if_not_exist(f"{templates_dir}/{entity_type}", include_main=False)
+        # Adding the entity-type module to the templates module's main.tf
+        if is_entity_type_module_created:
+            add_module_to_main(templates_dir, entity_type, f"./{entity_type}")
+
+    if not all(is_module_installed(f"templates.{entity_type}") for entity_type in entity_types):
+        run_terraform_init()
+
+def generate_template(entity_type, template_name):
+    """Imports a template into the env's state and writes its .tf file under modules/templates/<entity_type>"""
+    # A no-op when the caller already prepared the modules for all the templates it generates
+    prepare_template_modules([entity_type])
 
     # Generating .tf config:
-    import_template_to_tfstate(project_dir, entity_type, template_name)
+    import_template_to_tfstate(PROJECT_DIR, entity_type, template_name)
     template_resource = get_template_resource(entity_type, template_name)
-    validate_template_creation(project_dir, template_resource, entity_type, template_name)
-    write_tf_file(project_dir, template_resource, entity_type, template_name)
-    # Required to load modules
-    run_terraform_init()
+    validate_template_creation(PROJECT_DIR, template_resource, entity_type, template_name)
+    write_tf_file(PROJECT_DIR, template_resource, entity_type, template_name)
 
-    sys.exit()
+def is_module_installed(module_key):
+    """Whether `terraform init` already installed the module, per .terraform/modules/modules.json (e.g. templates.caregiver)"""
+    manifest_path = os.path.join(".terraform", "modules", "modules.json")
+    if not os.path.exists(manifest_path):
+        return False
 
-if __name__ == "__main__":
-    main()
+    with open(manifest_path, "r") as f:
+        manifest = json.load(f)
+
+    return any(module.get("Key") == module_key for module in manifest.get("Modules", []))
+
+def refresh_template(entity_type, template_name, address):
+    """Updates a managed template's state from BioT and rewrites its .tf file from it"""
+    result = subprocess.run(
+        ["terraform", "apply", "-refresh-only", "-auto-approve", "-input=false", "-no-color", f"-target={address}"],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to refresh {template_name}: {result.stderr.strip() or result.stdout.strip()}")
+
+    template_resource = get_template_resource(entity_type, template_name)
+    write_tf_file(PROJECT_DIR, template_resource, entity_type, template_name)
