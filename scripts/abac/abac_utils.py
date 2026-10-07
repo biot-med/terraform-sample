@@ -363,12 +363,67 @@ def module_address(abac_type, resource_name):
     return f"module.{MODULE_NAME}.{RESOURCE_TYPES[abac_type]}.{resource_name}"
 
 
-def import_to_state(abac_type, resource_name, object_id):
-    """Imports one object into the env's state. Returns None on success, or the error output."""
-    result = subprocess.run(
-        ["terraform", "import", "-input=false", "-no-color", module_address(abac_type, resource_name), object_id],
-        capture_output=True, text=True,
-    )
-    if result.returncode == 0:
+# Written by import_to_state() and deleted right after
+IMPORTS_FILE = "abac_scripts_imports.tf"
+PLAN_FILE = "abac_scripts_imports.tfplan"
+
+
+def _hcl_string(value):
+    """Quotes a value as an HCL string - JSON escaping, plus escaping HCL's ${ and %{ template sequences"""
+    return json.dumps(value).replace("${", "$${").replace("%{", "%%{")
+
+
+def import_to_state(objects):
+    """
+    Imports objects into the env's state in a single Terraform run: writes an import block for each one, plans,
+    and applies the saved plan only if it contains nothing but these imports - so other pending changes in the env
+    are never applied by accident. objects is a list of (abac_type, resource_name, object_id).
+    Returns None on success, or the error to show.
+    """
+    if not objects:
         return None
-    return (result.stderr or result.stdout).strip()
+
+    blocks = [
+        f"import {{\n  to = {module_address(abac_type, resource_name)}\n  id = {_hcl_string(object_id)}\n}}\n"
+        for abac_type, resource_name, object_id in objects
+    ]
+    with open(IMPORTS_FILE, "w") as f:
+        f.write("# Temporary file written by scripts/abac - safe to delete.\n\n" + "\n".join(blocks))
+
+    try:
+        print(f"Planning the import of {len(objects)} object(s)...")
+        result = subprocess.run(
+            ["terraform", "plan", "-input=false", "-no-color", "-refresh=false", f"-out={PLAN_FILE}"],
+            capture_output=True, text=True,
+        )
+        if result.returncode != 0:
+            return (result.stderr or result.stdout).strip()
+
+        result = subprocess.run(["terraform", "show", "-json", PLAN_FILE], capture_output=True, text=True)
+        if result.returncode != 0:
+            return (result.stderr or result.stdout).strip()
+
+        other_changes = []
+        imports = 0
+        for change in json.loads(result.stdout).get("resource_changes", []):
+            actions = change["change"]["actions"]
+            if "importing" in change["change"] and actions == ["no-op"]:
+                imports += 1
+            elif actions != ["no-op"]:
+                other_changes.append(f"{change['address']} ({', '.join(actions)})")
+
+        if other_changes:
+            return ("Nothing was imported - the plan has changes other than these imports. Apply or revert them first, "
+                    "or check the generated config of the objects listed:\n" + "\n".join(f"   - {c}" for c in other_changes))
+        if imports != len(objects):
+            return f"Nothing was imported - expected {len(objects)} import(s) in the plan but found {imports}."
+
+        print(f"Importing {imports} object(s)...")
+        result = subprocess.run(["terraform", "apply", "-input=false", "-no-color", PLAN_FILE], capture_output=True, text=True)
+        if result.returncode != 0:
+            return (result.stderr or result.stdout).strip()
+        return None
+    finally:
+        for path in (IMPORTS_FILE, PLAN_FILE):
+            if os.path.exists(path):
+                os.remove(path)

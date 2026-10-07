@@ -2,7 +2,7 @@ import sys
 
 from abac_utils import (
     ABAC_TYPES, MODULE_DIR, check_env_folder, ensure_module, import_to_state,
-    module_address, query, read_module_resources, read_state_addresses,
+    query, read_module_resources, read_state_addresses,
 )
 
 
@@ -34,22 +34,16 @@ def main():
             else:
                 to_create.append(f"{abac_type} [{object_id}]")
 
-    failed = []
-    for index, (abac_type, resource_name, object_id) in enumerate(to_import, start=1):
-        print(f"Importing ({index}/{len(to_import)}) {module_address(abac_type, resource_name)}")
-        error = import_to_state(abac_type, resource_name, object_id)
-        if error:
-            failed.append(f"{abac_type} [{object_id}]: {error}")
+    error = import_to_state(to_import)
+    imported = 0 if error else len(to_import)
 
-    print(f"\nImported {len(to_import) - len(failed)} existing object(s).")
+    print(f"\nImported {imported} existing object(s).")
     if to_create:
         print(f"{len(to_create)} object(s) don't exist in this environment yet and will be created by `terraform apply`:")
         for line in to_create:
             print(f"   - {line}")
-    if failed:
-        print(f"\n{len(failed)} import(s) failed - re-run the script to retry:")
-        for line in failed:
-            print(f"   - {line}")
+    if error:
+        print(f"\nImport failed - fix the error and re-run the script to retry:\n{error}")
         sys.exit(1)
 
 

@@ -3,7 +3,7 @@ import sys
 
 from abac_utils import (
     ABAC_TYPES, MODULE_DIR, MODULE_FILES, MODULE_NAME, check_env_folder, clean_config, ensure_module, format_module_files,
-    import_to_state, module_address, query, read_module_resources, read_state_addresses,
+    import_to_state, query, read_module_resources, read_state_addresses,
     reference_rule_dependencies, to_resource_name, write_resource_block,
 )
 
@@ -83,15 +83,10 @@ def main():
     if to_write:
         format_module_files()
 
-    failed = []
-    for index, (abac_type, object_id) in enumerate(to_import, start=1):
-        resource_name = managed_names[abac_type][object_id]
-        print(f"Importing ({index}/{len(to_import)}) {module_address(abac_type, resource_name)}")
-        error = import_to_state(abac_type, resource_name, object_id)
-        if error:
-            failed.append(f"{abac_type} [{object_id}]: {error}")
+    error = import_to_state([(abac_type, managed_names[abac_type][object_id], object_id) for abac_type, object_id in to_import])
+    imported = 0 if error else len(to_import)
 
-    print(f"\nWrote {len(to_write)} block(s), imported {len(to_import) - len(failed)} object(s).")
+    print(f"\nWrote {len(to_write)} block(s), imported {imported} object(s).")
     if skipped:
         print(f"\nSkipped {len(skipped)} object(s):")
         for line in skipped:
@@ -100,10 +95,8 @@ def main():
         filters = "".join(f' --{name} "{value}"' for name, value in [("type", args.type), ("id", args.id)] if value)
         print(f"\nHint: to update objects that are already managed with their current state in BioT, add --refresh:\n"
               f"   python3 ../../scripts/abac/init_abac.py{filters} --refresh")
-    if failed:
-        print(f"\n{len(failed)} import(s) failed - their .tf blocks were kept, re-run the script to retry:")
-        for line in failed:
-            print(f"   - {line}")
+    if error:
+        print(f"\nImport failed - the .tf blocks were kept, fix the error and re-run the script to retry:\n{error}")
         sys.exit(1)
 
     print("\nRun `terraform plan` to check - it should show no changes.")
