@@ -67,7 +67,7 @@ def run_terraform_import(terraform_address, template_type, template_name):
         return False
 
 def main():
-    modules_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../modules/templates"))
+    modules_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../modules/templates"))
     if not os.path.isdir(modules_path):
         raise FileNotFoundError(f"Templates folder not found: {modules_path}")
 
