@@ -4,8 +4,8 @@ import shlex
 import sys
 
 from template_utils import (
-    fetch_biot_templates, generate_template, get_template_tf_path, prepare_template_modules, read_managed_templates,
-    refresh_template, run_generate_tfvars,
+    fetch_biot_templates, get_template_tf_path, import_templates, read_managed_templates, refresh_templates,
+    run_generate_tfvars,
 )
 from common_utils import get_required_variables, login
 
@@ -46,22 +46,12 @@ def main():
 
     managed = read_managed_templates()
 
-    # Set up the modules of every entity type that has templates to generate, so terraform init runs once, not per type
-    entity_types_to_generate = sorted({
-        t['entityTypeName'] for t in templates
-        if t.get('id') and t.get('name') and t.get('entityTypeName') and t['id'] not in managed
-        and not os.path.exists(get_template_tf_path(t['entityTypeName'], t['name']))
-    })
-    if entity_types_to_generate:
-        prepare_template_modules(entity_types_to_generate)
-
     # Templates already in the state count as processed, so their children can be generated
     processed_ids = set(managed)
-    generated = []
-    refreshed = []
+    to_generate = []  # (entity_type, template_name), parents before their children
+    to_refresh = []  # (entity_type, template_name, terraform_address)
     skipped = []
     already_managed = 0
-    failed_templates = []
     remaining_templates = templates.copy()
 
     while remaining_templates:
@@ -83,13 +73,7 @@ def main():
 
             if template_id in managed:
                 if args.refresh:
-                    try:
-                        print(f"Going to refresh template -  Name: {template_name}, Type: {template_entity_type}")
-                        refresh_template(template_entity_type, template_name, managed[template_id])
-                        refreshed.append(label)
-                    except Exception as e:
-                        print(f"Failed to refresh [{template_name}.tf]: {e}")
-                        failed_templates.append(label)
+                    to_refresh.append((template_entity_type, template_name, managed[template_id]))
                 else:
                     skipped.append(f"{label} - already managed")
                     already_managed += 1
@@ -108,28 +92,36 @@ def main():
                 next_round.append(template)
                 continue
 
-            # Parent is processed (or no parent), so process this template
-            try:
-                print(f"Going to generate template -  Name: {template_name}, Type: {template_entity_type}")
-                generate_template(template_entity_type, template_name)
-                processed_ids.add(template_id)
-                generated.append(label)
-            except Exception as e:
-                # Track failed templates but don't mark as processed
-                print(f"Failed to generate [{template_name}.tf] files: {e}")
-                failed_templates.append(label)
-            # Still mark progress to avoid infinite loop
+            # Parent is processed (or no parent), so this template can be generated
+            to_generate.append((template_entity_type, template_name))
+            processed_ids.add(template_id)
             progress_made = True
 
         if not progress_made:
             print("No progress made ! printing next_round:")
             print(next_round)
-            if failed_templates:
-                print(f"\nPreviously failed templates: {failed_templates}")
             raise RuntimeError("Could not resolve dependencies — circular or missing parent IDs? "
                                "When using --name, generate the parent template first.")
 
         remaining_templates = next_round
+
+    # Each runs Terraform once for all its templates, so BioT sees a few logins rather than one per template
+    generated = []
+    refreshed = []
+    failed_templates = []
+    missing = []
+    try:
+        import_templates(to_generate)
+        generated = [f"{entity_type}:{name}" for entity_type, name in to_generate]
+    except Exception as e:
+        print(f"Failed to generate templates: {e}")
+        failed_templates += [f"{entity_type}:{name}" for entity_type, name in to_generate]
+    try:
+        missing = refresh_templates(to_refresh)
+        refreshed = [f"{entity_type}:{name}" for entity_type, name, _ in to_refresh if f"{entity_type}:{name}" not in missing]
+    except Exception as e:
+        print(f"Failed to refresh templates: {e}")
+        failed_templates += [f"{entity_type}:{name}" for entity_type, name, _ in to_refresh]
 
     print(f"\nGenerated {len(generated)} template(s), refreshed {len(refreshed)}.")
     if skipped:
@@ -140,6 +132,10 @@ def main():
         filters = "".join(f"--{name}={shlex.quote(value)} " for name, value in [("type", args.type), ("name", args.name)] if value)
         print(f"\nHint: to update templates that are already managed with their current state in BioT, add --refresh:\n"
               f"   python3 ../../scripts/templates/init_templates.py {filters}--refresh")
+    if missing:
+        print(f"\n{len(missing)} template(s) no longer exist in BioT - delete their .tf files:")
+        for line in missing:
+            print(f"   - {line}")
     if failed_templates:
         print(f"\nSummary: {len(failed_templates)} template(s) failed:")
         for failed in failed_templates:

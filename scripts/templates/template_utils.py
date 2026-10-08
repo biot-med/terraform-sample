@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 import re
@@ -47,44 +48,6 @@ def prompt_if_missing(value, prompt_message):
 
 def get_full_template_name(entity_type, template_name):
     return f"module.templates.module.{entity_type}.{RESOURCE_TYPE}.{template_name}"
-
-def import_template_to_tfstate(project_dir, entity_type, template_name):
-    # temp_file_path = f"./temp.tf"
-    temp_file_path = f"{project_dir}/modules/templates/{entity_type}/temp.tf"
-    
-    # Ensure the directory exists
-    temp_dir = os.path.dirname(temp_file_path)
-    os.makedirs(temp_dir, exist_ok=True)
-
-    # Creates temporary block
-    with open(temp_file_path, "a") as f:
-        f.write(f'resource "{RESOURCE_TYPE}" "{template_name}" {{}}\n\n')
-
-    try:
-        # Import template to terraform.tfstate local file
-        cmd = [
-            "terraform", "import",
-            get_full_template_name(entity_type, template_name),
-            f"{entity_type}:{template_name}"
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-
-        if result.returncode == 0:
-            print(f"Imported {template_name}")
-        else:
-            raise RuntimeError(f"Failed to import {template_name}: {result.stderr}")
-
-    finally:
-        # Delete temporary file regardless of success or failure
-        try:
-            os.remove(temp_file_path)
-            print(f"Deleted temp file: '{temp_file_path}'")
-        except FileNotFoundError:
-            print(f"File '{temp_file_path}' not found.")
-        except PermissionError:
-            print(f"Permission denied deleting '{temp_file_path}'.")
-        except Exception as e:
-            print(f"Unexpected error deleting '{temp_file_path}': {e}")
 
 def get_template_resource_by_id(template_id):
     with open("./terraform.tfstate", 'r') as f:
@@ -602,16 +565,90 @@ def prepare_template_modules(entity_types):
     if not all(is_module_installed(f"templates.{entity_type}") for entity_type in entity_types):
         run_terraform_init()
 
-def generate_template(entity_type, template_name):
-    """Imports a template into the env's state and writes its .tf file under modules/templates/<entity_type>"""
-    # A no-op when the caller already prepared the modules for all the templates it generates
-    prepare_template_modules([entity_type])
+# Written by import_templates() and deleted right after
+IMPORTS_FILE = "templates_scripts_imports.tf"
+GENERATED_FILE = "templates_scripts_generated.tf"
+PLAN_FILE = "templates_scripts_imports.tfplan"
 
-    # Generating .tf config:
-    import_template_to_tfstate(PROJECT_DIR, entity_type, template_name)
-    template_resource = get_template_resource(entity_type, template_name)
-    validate_template_creation(PROJECT_DIR, template_resource, entity_type, template_name)
-    write_tf_file(PROJECT_DIR, template_resource, entity_type, template_name)
+def _run_terraform(args):
+    result = subprocess.run(["terraform", *args, "-no-color"], capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError((result.stderr or result.stdout).strip())
+    return result.stdout
+
+def import_templates(templates):
+    """
+    Imports templates into the env's state in a single Terraform run, then writes their .tf files.
+    templates is a list of (entity_type, template_name), parents before their children.
+
+    Import blocks can't target a module with generated config, so the templates are imported at the env root with
+    config Terraform generates, the saved plan is applied only if it holds nothing but these imports, and the state
+    is then moved to the module addresses - which is local and needs no BioT login.
+    """
+    if not templates:
+        return
+
+    prepare_template_modules(sorted({entity_type for entity_type, _ in templates}))
+    temp_addresses = [f"{RESOURCE_TYPE}.templates_scripts_import_{index}" for index in range(len(templates))]
+
+    with open(IMPORTS_FILE, "w") as f:
+        f.write("# Temporary file written by scripts/templates - safe to delete.\n\n")
+        for address, (entity_type, template_name) in zip(temp_addresses, templates):
+            f.write(f'import {{\n  to = {address}\n  id = {json.dumps(f"{entity_type}:{template_name}")}\n}}\n\n')
+
+    moved = False
+    try:
+        print(f"Planning the import of {len(templates)} template(s)...")
+        _run_terraform(["plan", "-input=false", "-refresh=false", f"-generate-config-out={GENERATED_FILE}"])
+        # Same as the ABAC scripts: Terraform names the provider by its registry name, which envs don't declare
+        with open(GENERATED_FILE, "r") as f:
+            generated = re.sub(r"^\s*provider\s*=\s*biot-gen2\s*\n", "", f.read(), flags=re.MULTILINE)
+        with open(GENERATED_FILE, "w") as f:
+            f.write(generated)
+
+        _run_terraform(["plan", "-input=false", "-refresh=false", f"-out={PLAN_FILE}"])
+        plan = json.loads(_run_terraform(["show", "-json", PLAN_FILE]))
+        other_changes = []
+        imports = 0
+        for change in plan.get("resource_changes", []):
+            actions = change["change"]["actions"]
+            if "importing" in change["change"] and actions == ["no-op"]:
+                imports += 1
+            elif actions != ["no-op"]:
+                other_changes.append(f"{change['address']} ({', '.join(actions)})")
+        if other_changes:
+            raise RuntimeError("Nothing was imported - the plan has changes other than these imports. Apply or revert "
+                               "them first:\n" + "\n".join(f"   - {c}" for c in other_changes))
+        if imports != len(templates):
+            raise RuntimeError(f"Nothing was imported - expected {len(templates)} import(s) in the plan but found {imports}.")
+
+        print(f"Importing {imports} template(s)...")
+        _run_terraform(["apply", "-input=false", PLAN_FILE])
+
+        # state mv always writes a timestamped backup - those from these moves are removed once all succeed, since
+        # apply already saved the state from before the import as terraform.tfstate.backup
+        backups_before = set(glob.glob("terraform.tfstate.*.backup"))
+        for address, (entity_type, template_name) in zip(temp_addresses, templates):
+            _run_terraform(["state", "mv", address, get_full_template_name(entity_type, template_name)])
+        moved = True
+        for path in set(glob.glob("terraform.tfstate.*.backup")) - backups_before:
+            os.remove(path)
+    finally:
+        # The generated config is kept only if the templates were imported but not all moved, since removing it
+        # would make the next plan destroy the templates still at the temporary addresses
+        cleanup = [IMPORTS_FILE, PLAN_FILE] + ([GENERATED_FILE] if moved or not _in_state(temp_addresses) else [])
+        for path in cleanup:
+            if os.path.exists(path):
+                os.remove(path)
+
+    for entity_type, template_name in templates:
+        template_resource = get_template_resource(entity_type, template_name)
+        validate_template_creation(PROJECT_DIR, template_resource, entity_type, template_name)
+        write_tf_file(PROJECT_DIR, template_resource, entity_type, template_name)
+
+def _in_state(addresses):
+    result = subprocess.run(["terraform", "state", "list", "-no-color"], capture_output=True, text=True)
+    return bool(set(addresses) & set(result.stdout.split()))
 
 def is_module_installed(module_key):
     """Whether `terraform init` already installed the module, per .terraform/modules/modules.json (e.g. templates.caregiver)"""
@@ -624,14 +661,24 @@ def is_module_installed(module_key):
 
     return any(module.get("Key") == module_key for module in manifest.get("Modules", []))
 
-def refresh_template(entity_type, template_name, address):
-    """Updates a managed template's state from BioT and rewrites its .tf file from it"""
-    result = subprocess.run(
-        ["terraform", "apply", "-refresh-only", "-auto-approve", "-input=false", "-no-color", f"-target={address}"],
-        capture_output=True, text=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"Failed to refresh {template_name}: {result.stderr.strip() or result.stdout.strip()}")
+def refresh_templates(templates):
+    """
+    Updates managed templates' state from BioT in a single Terraform run and rewrites their .tf files from it.
+    templates is a list of (entity_type, template_name, terraform_address). Returns the ones no longer in BioT.
+    """
+    if not templates:
+        return []
 
-    template_resource = get_template_resource(entity_type, template_name)
-    write_tf_file(PROJECT_DIR, template_resource, entity_type, template_name)
+    print(f"Refreshing {len(templates)} template(s)...")
+    _run_terraform(["apply", "-refresh-only", "-auto-approve", "-input=false",
+                    *[f"-target={address}" for _, _, address in templates]])
+
+    missing = []
+    for entity_type, template_name, _ in templates:
+        template_resource = get_template_resource(entity_type, template_name)
+        if template_resource is None:
+            # Removed from the state by the refresh - its .tf file is left for the user to delete
+            missing.append(f"{entity_type}:{template_name}")
+            continue
+        write_tf_file(PROJECT_DIR, template_resource, entity_type, template_name)
+    return missing
