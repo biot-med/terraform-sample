@@ -10,7 +10,7 @@
 ### Changed
 - Template scripts moved to `scripts/templates/`
 - `generate_template.py` is deprecated - use `init_templates.py --type=<entity-type> --name=<template-name>` instead
-- `init_templates.py` can be re-run, and supports `--refresh` to update templates changed in the BioT Console
+- `init_templates.py` can be re-run, and supports `--refresh` to update templates changed in the BioT Console (instead of the requirement to delete and re-import like the previous version)
 
 ## [1.0.5] - 2026-09-14
 
