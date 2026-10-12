@@ -17,5 +17,6 @@ variable "biot_service_secret_key" {
 
 variable "biot_templates_map" {
   type        = map(any)
-  description = "Map of template ids"
+  default     = {}
+  description = "Map of template ids - filled in biot_templates.auto.tfvars by generate_biot_templates_tfvars.py"
 }

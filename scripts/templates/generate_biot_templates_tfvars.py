@@ -3,8 +3,8 @@
 import os
 import sys
 
-from common_utils import get_required_variables, login
 from template_utils import fetch_biot_templates
+from common_utils import get_required_variables, login
 
 def generate_map_value(templates):
     entries = []

@@ -10,6 +10,8 @@ def get_main_tf_content():
     required_providers = read_main_tf_required_providers(dev_main_tf_path)
     
     return f"""terraform {{
+  required_version = ">= 1.14"
+
 {required_providers}
 }}
 
@@ -43,7 +45,8 @@ variable "biot_service_secret_key" {
 
 variable "biot_templates_map" {
   type        = map(any)
-  description = "Map of template ids"
+  default     = {}
+  description = "Map of template ids - filled in biot_templates.auto.tfvars by generate_biot_templates_tfvars.py"
 }
 """
 
@@ -73,6 +76,15 @@ def create_new_env_folder():
     if not os.path.isdir(base_env_path):
         raise FileNotFoundError(f"The required 'envs' folder does not exist at {base_env_path}. Make sure you run the script from the project's root folder.")
 
+    # The new env's main.tf uses the templates module, so terraform init fails without it
+    if not os.path.isdir(os.path.join(os.getcwd(), "modules", "templates")):
+        print("The 'modules/templates' folder does not exist yet. A new environment is created from the modules generated on dev, so generate them first:\n"
+              "   cd envs/dev\n"
+              "   python3 ../../scripts/templates/init_templates.py\n"
+              "   python3 ../../scripts/abac/init_abac.py      (optional - to manage ABAC actions, conditions and rules)\n"
+              "Then run this script again from the project's root folder.")
+        return
+
     # Get inputs
     env_name = input("Enter the environment name (e.g. qa): ").strip()
     base_url = input("Enter the full base URL (e.g. https://api.staging.mycompany.biot-med.com): ").strip()
@@ -99,9 +111,12 @@ def create_new_env_folder():
         os.chdir(env_dir)
         # Run external scripts
         scripts_dir = os.path.join(os.pardir, os.pardir, "scripts")
-        subprocess.run(["python3", os.path.join(scripts_dir, "generate_biot_templates_tfvars.py")], check=True)
+        subprocess.run(["python3", os.path.join(scripts_dir, "templates", "generate_biot_templates_tfvars.py")], check=True)
         subprocess.run(["terraform", "init"], cwd='.', check=True)
-        subprocess.run(["python3", os.path.join(scripts_dir, "populate_tfstate.py")], check=True)
+        subprocess.run(["python3", os.path.join(scripts_dir, "templates", "populate_tfstate.py")], check=True)
+        # Adds the abac module to the env and imports the ABAC objects that already exist in it
+        if os.path.isdir(os.path.join(os.pardir, os.pardir, "modules", "abac")):
+            subprocess.run(["python3", os.path.join(scripts_dir, "abac", "populate_abac_state.py")], check=True)
 
     except Exception as e:
         print(f"\nError occurred: {e}")
