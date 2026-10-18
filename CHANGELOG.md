@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0] - 2026-10-18
+
+### Added
+- Updated BioT's provider source to 1.2.0
+- Template attributes keep their archive storage setting (`file_configuration`); `init_templates.py --refresh` picks it up from the BioT Console
+- README: "Upgrading the BioT Provider" - update the version in every `providers.tf` and run `init_templates.py --refresh` before the first plan
+
 ## [1.1.0] - 2026-10-07
 
 ### Added

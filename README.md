@@ -92,6 +92,18 @@ In this case you can change the template via the BioT Console portal and regener
 
 This method should only be used for development environments.
 
+## Upgrading the BioT Provider
+
+A new provider version can add template fields (for example `file_configuration`). Until your `.tf` files contain them,
+`terraform plan` shows them being removed, and applying it clears values set in the BioT Console.
+
+1. Set the new version in `envs/<env>/main.tf` of every environment **and** in every `providers.tf` under `modules/`
+   (the scripts write the version into each module once, when they create it).
+2. In your terminal - `cd envs/dev`, then `terraform init -upgrade`
+3. In your terminal - `python3 ../../scripts/templates/init_templates.py --refresh` - regenerates the `.tf` files of all
+   managed templates from BioT, including the new fields
+4. Run `terraform plan` - it should show no changes. Then run `terraform init -upgrade` in the other environments.
+
 ## Managing ABAC Actions, Conditions and Rules
 
 ABAC objects are managed in the shared `modules/abac` module (`actions.tf`, `conditions.tf`, `rules.tf`) and imported with
