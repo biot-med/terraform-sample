@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.0] - 2026-11-24
+
+### Added
+- Updated BioT's provider source to 1.3.0
+- Support for portal builder views - `scripts/portal_views/init_portal_views.py` imports them into `modules/portal_views`
+- `create_env.py` adds `module "portal_views"` to new environments when `modules/portal_views` exists
+
+### Changed
+- The Terraform helpers shared by the ABAC and portal view scripts moved to `scripts/terraform_utils.py`
+
 ## [1.1.0] - 2026-10-07
 
 ### Added

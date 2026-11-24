@@ -2,13 +2,20 @@ import os
 import shutil
 import subprocess
 from common_utils import read_main_tf_required_providers
+from terraform_utils import module_block
 
 def get_main_tf_content():
     """Generate main.tf content using required_providers from envs/dev/main.tf"""
     # Read required_providers from envs/dev/main.tf as template
     dev_main_tf_path = os.path.join(os.getcwd(), "envs", "dev", "main.tf")
     required_providers = read_main_tf_required_providers(dev_main_tf_path)
-    
+
+    # Portal views need no import - BioT creates every view, and `terraform apply` updates the existing one.
+    # They find their template by name, so the templates are created first.
+    portal_views = ""
+    if os.path.isdir(os.path.join(os.getcwd(), "modules", "portal_views")):
+        portal_views = "\n" + module_block("portal_views", "../../modules/portal_views", ["templates"])
+
     return f"""terraform {{
   required_version = ">= 1.14"
 
@@ -25,7 +32,7 @@ module templates {{
     source = "../../modules/templates"
     biot_templates_map = var.biot_templates_map
 }}
-"""
+{portal_views}"""
 
 VARIABLES_TF_CONTENT = """variable "biot_base_url" {
   type        = string
@@ -82,6 +89,7 @@ def create_new_env_folder():
               "   cd envs/dev\n"
               "   python3 ../../scripts/templates/init_templates.py\n"
               "   python3 ../../scripts/abac/init_abac.py      (optional - to manage ABAC actions, conditions and rules)\n"
+              "   python3 ../../scripts/portal_views/init_portal_views.py      (optional - to manage portal builder views)\n"
               "Then run this script again from the project's root folder.")
         return
 
