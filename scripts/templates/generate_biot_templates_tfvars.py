@@ -6,6 +6,9 @@ import sys
 from template_utils import fetch_biot_templates
 from common_utils import get_required_variables, login
 
+# Terraform loads *.auto.tfvars files from the environment folder the script runs in
+TFVARS_FILE = "biot_templates.auto.tfvars"
+
 def generate_map_value(templates):
     entries = []
     for template in templates['data']:
@@ -61,14 +64,8 @@ def write_or_update_tfvars(tfvars_path):
 # Main entry point
 # --------------------------
 if __name__ == "__main__":
-    # Default file path if not provided
-    default_path = "biot_templates.auto.tfvars"
-
-    # Use CLI arg if given, else default
-    tfvars_path = sys.argv[1] if len(sys.argv) > 1 else default_path
-
     try:
-        write_or_update_tfvars(tfvars_path)
+        write_or_update_tfvars(TFVARS_FILE)
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)

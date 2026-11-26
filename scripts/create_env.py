@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import subprocess
 from common_utils import read_main_tf_required_providers
@@ -95,6 +96,9 @@ def create_new_env_folder():
 
     # Get inputs
     env_name = input("Enter the environment name (e.g. qa): ").strip()
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", env_name):
+        print("The environment name is the name of a folder under 'envs': use letters, digits, '-' and '_' only.")
+        return
     base_url = input("Enter the full base URL (e.g. https://api.staging.mycompany.biot-med.com): ").strip()
     service_id = input("Enter the service ID: ").strip()
     secret_key = input("Enter the service secret key: ").strip()

@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.1] - 2026-11-26
+
+### Changed
+- [SOFT-9953] `create_env.py` accepts only letters, digits, `-` and `_` in the environment name
+- [SOFT-9953] `generate_biot_templates_tfvars.py` always writes `biot_templates.auto.tfvars` in the current environment folder; the file path argument is removed
+
 ## [1.3.0] - 2026-11-24
 
 ### Added
